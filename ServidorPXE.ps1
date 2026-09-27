@@ -477,19 +477,40 @@ function Invoke-DorPXETest {
     Check 'html do console nao vazio' ($html.Length -gt 20000) "tamanho=$($html.Length)"
     foreach ($m in @('stepbtn', 'showStep', 'prefers-color-scheme', 'midir', 'miso', 'mslug',
             'id="pmode"', 'id="pdef"', 'policyHint', 'saveMedia', 'buildMedia',
-            'addDev', 'rmDev', 'loglink', 'Atividade recente', 'Politica de boot', 'id="envlist"')) {
+            'addDev', 'rmDev', 'loglink', 'Ativos', 'Politica de boot', 'id="envlist"')) {
         Check "marcador $m" ($html.Contains($m)) 'ausente no HTML'
     }
     Check 'tres abas apenas' (@([regex]::Matches($html, 'class="stepbtn"')).Count -eq 2) 'numero de abas diferente de 2'
     Check 'aba Atividade removida' (-not $html.Contains('showStep(5)') -and -not $html.Contains('data-step="5"')) 'aba 5 ainda presente'
     Check 'aba 3 eliminada' (-not $html.Contains('data-step="3"') -and -not $html.Contains('showStep(3)') -and -not $html.Contains('data-go="3"')) 'aba 3 ainda presente'
     Check 'politica na barra de status' ($html -match '(?s)<div class="pbar">.*?id="pmode".*?id="pdef".*?</header>') 'seletores de politica fora da barra superior'
-    Check 'aba servico tem monitoramento' ($html.Contains('id="boots"') -and $html.Contains('id="dhcp"') -and $html.Contains('id="tftp"') -and $html.Contains('id="stats"')) 'tabelas de evento fora do passo 1'
-    # dispositivos foram para o passo 1, depois de Atividade recente
+    # O passo 1 virou "Ativos": o uptime, os componentes e os contadores sairam
+    # de containers proprios e sobiram para a barra de status.
     $step1 = [regex]::Match($html, '(?s)<section class="step" data-step="1">(.*?)</section>').Value
-    Check 'servico virou servico e ativos' ($html.Contains('Servico e ativos')) 'aba 1 nao foi renomeada'
+    Check 'passo 1 com as tabelas de evento' ($step1.Contains('id="boots"') -and $step1.Contains('id="dhcp"') -and $step1.Contains('id="tftp"')) 'tabelas de evento fora do passo 1'
+    Check 'passo 1 chamado Ativos' ($html.Contains('<b>Ativos</b>') -and $html.Contains('<h2>1. Ativos</h2>')) 'aba 1 nao se chama Ativos'
+    Check 'passo 1 com descricao Dispositivos e atividade' ($html.Contains('<small>Dispositivos e atividade</small>') -and $html.Contains('<span class="sub">Dispositivos e atividade</span>')) 'descricao do passo 1 divergente'
+    Check 'containers removidos do passo 1' (-not $html.Contains('Servico e ativos') -and -not $html.Contains('<h2>Componentes</h2>') -and -not $html.Contains('<h2>Contadores</h2>') -and -not $html.Contains('id="tiles"') -and -not $html.Contains('id="stats"') -and -not $html.Contains('id="uptime"') -and -not $html.Contains('id="updlbl"')) 'container antigo do passo 1 ainda presente'
     Check 'ativos dentro do passo 1' ($step1.Contains('id="hosts"') -and $step1.Contains('id="dmac"') -and $step1.Contains('id="devsWrap"')) 'cards de dispositivos fora do passo 1'
-    Check 'ativos depois da atividade' ($step1.IndexOf('Atividade recente') -lt $step1.IndexOf('id="hosts"')) 'Dispositivos aparece antes de Atividade recente'
+    Check 'atividade antes dos dispositivos' ($step1.IndexOf('id="boots"') -lt $step1.IndexOf('id="hosts"') -and $step1.IndexOf('id="boots"') -ge 0) 'Dispositivos aparece antes da atividade'
+    # Barra de status em duas linhas: contadores em cima, imagem e servico embaixo.
+    $sb = [regex]::Match($html, '(?s)<div class="pbar">(.*?)</div>\s*<div class="pbar polbar">').Value
+    Check 'barra de status com duas linhas' ($sb.Contains('id="chips"') -and $sb.Contains('id="chips2"') -and $sb.Contains('sbinfo')) 'linhas da barra de status NAO separadas'
+    # Os contadores sao montados por JS, entao a Linha superior se verifica no
+    # array `chips`, e a inferior no array `info` (ambos dentro de head()).
+    $linha1 = [regex]::Match($html, '(?s)var chips=\[(.*?)\];').Value
+    Check 'linha superior: array de contadores' ($linha1.Length -gt 0) 'array chips nao encontrado'
+    foreach ($c in @('Uptime', 'DHCP', 'Ofertas', 'TFTP', 'HTTP', 'Boots', 'Negados', 'Hosts ativos')) {
+        Check "linha superior com $c" ($linha1.Contains("'$c',")) "contador $c fora da linha superior"
+    }
+    Check 'linha superior sem Imagem' (-not $linha1.Contains("'Imagem',")) 'imagem ainda na linha superior'
+    Check 'linha superior renderiza em chips' ($html.Contains("getElementById('chips').innerHTML=chips.map")) 'contadores nao renderizam na linha superior'
+    $linha2 = [regex]::Match($html, '(?s)var info=\[(.*?)\];').Value
+    Check 'linha inferior: array de imagem e servico' ($linha2.Length -gt 0) 'array info nao encontrado'
+    foreach ($c in @("'Imagem',", "'HTTP',", "'TFTP',", "'DHCP proxy',")) {
+        Check "linha inferior com $($c.Trim(','))" ($linha2.Contains($c)) "item $c fora da linha inferior"
+    }
+    Check 'linha inferior escreve em chips2' ($html.Contains("document.getElementById('chips2').innerHTML")) 'linha inferior nao renderiza'
     Check 'usuario abaixo dos botoes' ($html -match '(?s)<div class="toolrow">.*?</div>\s*<span class="who" id="who"') 'usuario nao esta abaixo de Atualizar/Reiniciar'
     Check 'botao Parar removido' (-not $html.Contains("ctl('stop')")) 'ainda chama ctl(stop)'
     Check 'reiniciar disponivel' ($html.Contains("ctl('restart')")) 'sem botao reiniciar'
@@ -503,7 +524,7 @@ function Invoke-DorPXETest {
     Check 'dropdown marca alteracao pendente' ($html.Contains("markDirty('pmode')") -and $html.Contains("delete DIRTY.pmode")) 'auto-refresh sobrescreve a escolha do usuario'
     Check 'politica sem menu' (-not $html.Contains('value="Menu"')) 'opcao Menu ainda exposta'
     Check 'diagnostico de ambiente' ($html.Contains('Diagnostico do ambiente') -and $html.Contains('function envlist')) 'sem relatorio de ambiente'
-    Check 'barra de status com imagem' ($html.Contains('midState') -and $html.Contains('Imagem WinPE')) 'sem status da imagem na barra'
+    Check 'barra de status com midState' ($html.Contains('midState') -and $html.Contains("id='chips2'") -or $html.Contains('midState') -and $html.Contains('id="chips2"')) 'sem status da imagem na barra'
     Check 'usuario autenticado no cabecalho' ($html.Contains('id="who"') -and $html.Contains('function sair')) 'sem botao Sair/usuario'
     Check 'atualizacao a 3s' ($html.Contains('},3000);')) 'intervalo de atualizacao alterado'
     Check 'sem painel de log no console' (-not $html.Contains('id="logBox"') -and -not $html.Contains('loadLog(')) 'painel de log antigo ainda presente'

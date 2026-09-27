@@ -568,7 +568,7 @@ h1,h2,h3{margin:0}
 .dot.on{background:var(--ok);box-shadow:0 0 0 4px rgba(34,197,94,.16);animation:pulse 2.4s ease-in-out infinite}
 .dot.off{background:var(--err);box-shadow:0 0 0 4px rgba(239,68,68,.14)}
 @keyframes pulse{0%,100%{box-shadow:0 0 0 3px rgba(34,197,94,.16)}50%{box-shadow:0 0 0 7px rgba(34,197,94,.05)}}
-.chips{display:flex;gap:8px;flex-wrap:wrap;flex:1 1 300px;min-width:0}
+ .chips{display:flex;gap:8px;flex-wrap:wrap;min-width:0}
 .chip{display:inline-flex;align-items:baseline;gap:6px;padding:5px 10px;border-radius:9px;background:var(--card2);
   border:1px solid var(--line);font-size:12px;color:var(--dim);white-space:nowrap}
 .chip b{font-size:14px;color:var(--fg);font-variant-numeric:tabular-nums}
@@ -577,7 +577,13 @@ h1,h2,h3{margin:0}
 .tools{display:flex;flex-direction:column;align-items:flex-end;gap:5px;flex-wrap:wrap}
 .toolrow{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
 .who{font-size:12px;color:var(--dim);max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:right}
-.pbar{max-width:1440px;margin:0 auto;padding:0 18px 10px;display:flex;flex-wrap:wrap;gap:8px 10px;align-items:center}
+ .pbar{max-width:1440px;margin:0 auto;padding:0 18px 10px;display:flex;flex-wrap:wrap;gap:8px 10px;align-items:center}
+ .sbrow{display:flex;gap:8px 10px;align-items:center;flex-wrap:wrap;width:100%;min-width:0}
+ .sbrow .chips{flex:1 1 auto}
+ .sbinfo{border-top:1px solid var(--line);padding-top:8px;margin-top:2px}
+ .sbmsg{font-size:12px;color:var(--dim);flex:0 1 auto;min-width:0}
+ .chip i{font-style:normal;font-size:11.5px;color:var(--dim)}
+ .polbar{border-top:1px solid var(--line);padding-top:9px}
 .pbar>label{font-size:12px;color:var(--dim);font-weight:600;white-space:nowrap}
 .pbar select{width:auto;min-width:148px;padding:5px 9px;font-size:12.5px}
 .pbar .polhint{font-size:12px;color:var(--dim);flex:1 1 240px;min-width:0}
@@ -607,15 +613,6 @@ h1,h2,h3{margin:0}
 .card>header h2{font-size:15px}
 .card>header .sub{font-size:12px;color:var(--dim)}
 .card .body{padding:16px}
-.hero{display:flex;flex-wrap:wrap;gap:16px;align-items:center;justify-content:space-between}
-.hero .big{font-size:26px;font-weight:700;font-variant-numeric:tabular-nums}
-.tiles{display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(170px,1fr))}
-.tile{background:var(--card2);border:1px solid var(--line);border-radius:var(--r2);padding:12px}
-.tile b{display:block;font-size:14px;margin-bottom:4px}
-.stats{display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(118px,1fr))}
-.stat{background:var(--card2);border:1px solid var(--line);border-radius:var(--r2);padding:10px 12px}
-.stat b{display:block;font-size:20px;font-weight:700;font-variant-numeric:tabular-nums;line-height:1.2}
-.stat i{font-style:normal;font-size:11px;color:var(--dim);text-transform:uppercase;letter-spacing:.5px}
 
 /* ---------- formularios ---------- */
 label.f{display:block;margin-bottom:12px}
@@ -692,12 +689,13 @@ td.wrap{white-space:normal;max-width:320px}
 @media (max-width:620px){
   body{font-size:14px}
   .topin{padding:10px 12px;gap:10px}
-  .chips{order:3;width:100%;overflow-x:auto;flex-wrap:nowrap;padding-bottom:2px}
+  .sbrow{overflow-x:auto;flex-wrap:nowrap;padding-bottom:2px}
+  .sbrow .chips{flex-wrap:nowrap}
+  .sbmsg{display:none}
   .tools{order:2;margin-left:auto}
 .pbar{padding:0 12px 10px}
 .pbar select{flex:1 1 140px;min-width:0}
 .pbar .polhint{flex:1 1 100%}
-  .hero .big{font-size:22px}
   .nav{flex-direction:column-reverse}
   .nav button{width:100%}
 }
@@ -712,9 +710,9 @@ td.wrap{white-space:normal;max-width:320px}
       <div><b>ServidorPXE $version</b><span id="srvname">-</span></div>
     </div>
     <div class="pill"><i class="dot off" id="dot"></i><span id="statustext">consultando...</span></div>
-    <div class="chips" id="chips"></div>
     <div class="tools">
       <div class="toolrow">
+        <label class="tiny mut" title="reconsultar o servico a cada 3 segundos"><input type="checkbox" id="auto" checked style="width:auto;margin-right:5px"> auto</label>
         <button class="sm" onclick="load(true)">Atualizar</button>
         <button class="sm p" onclick="ctl('restart')">Reiniciar</button>
         <button class="sm" onclick="sair()">Sair</button>
@@ -723,6 +721,13 @@ td.wrap{white-space:normal;max-width:320px}
     </div>
   </div>
   <div class="pbar">
+    <div class="sbrow" id="chips"></div>
+    <div class="sbrow sbinfo">
+      <div class="chips" id="chips2"></div>
+      <span class="sbmsg" id="ctlmsg"></span>
+    </div>
+  </div>
+  <div class="pbar polbar">
     <label>Politica de boot</label>
     <select id="pmode" onchange="markDirty('pmode');policyHint()" title="Quem pode iniciar pela rede">
       <option value="AllowList">Somente cadastrados</option>
@@ -737,44 +742,21 @@ td.wrap{white-space:normal;max-width:320px}
 
 <div class="shell">
   <nav class="steps" id="steps" aria-label="Passos">
-    <button class="stepbtn" data-go="1" aria-current="true"><span class="n">1</span><span><b>Servico e ativos</b><small>status, cadastro e Politica</small></span></button>
+    <button class="stepbtn" data-go="1" aria-current="true"><span class="n">1</span><span><b>Ativos</b><small>Dispositivos e atividade</small></span></button>
     <button class="stepbtn" data-go="2"><span class="n">2</span><span><b>Midia (ISO)</b><small>imagem do Windows 11</small></span></button>
     <div class="hint">Logs no arquivo <b>servidorpxe.log</b> na raiz do projeto.<br>No Passo 2 voce aponta a imagem ISO do Windows 11.</div>
   </nav>
 
   <main>
-    <!-- ================= PASSO 1: SERVICO ================= -->
+    <!-- ================= PASSO 1: ATIVOS ================= -->
     <section class="step" data-step="1">
       <div class="card">
-        <header><h2>1. Servico e ativos</h2><span class="sub" id="upd">-</span>
+        <header><h2>1. Ativos</h2><span class="sub">Dispositivos e atividade</span>
           <span style="margin-left:auto" class="row">
-            <label class="tiny mut"><input type="checkbox" id="auto" checked style="width:auto;margin-right:5px"> atualizacao automatica (3s)</label>
+            <span class="tiny mut" id="upd">-</span>
+            <a class="tiny" id="loglink" href="/pxe/servidorpxe.log" target="_blank">log (arquivo de texto)</a>
           </span>
         </header>
-        <div class="body">
-          <div class="hero">
-            <div>
-              <div class="big" id="uptime">--:--:--</div>
-              <div class="mut tiny" id="updlbl">em execucao neste servidor</div>
-            </div>
-            <div class="row">
-              <button class="p" onclick="ctl('restart')">Reiniciar servico</button>
-              <a class="tiny" id="loglink" href="/pxe/servidorpxe.log" target="_blank">log (arquivo de texto)</a>
-            </div>
-          </div>
-          <p class="mut tiny" style="margin:10px 0 0" id="ctlmsg"></p>
-        </div>
-      </div>
-      <div class="card">
-        <header><h2>Componentes</h2><span class="sub">o que esta atendendo agora</span></header>
-        <div class="body"><div class="tiles" id="tiles"></div></div>
-      </div>
-      <div class="card">
-        <header><h2>Contadores</h2><span class="sub">desde o inicio do servico</span></header>
-        <div class="body"><div class="stats" id="stats"></div></div>
-      </div>
-      <div class="card">
-        <header><h2>Atividade recente</h2><span class="sub">ultimos eventos recebidos</span></header>
         <div class="body">
           <div class="grid2">
             <div><h3 class="h3" style="margin-bottom:8px">Boot</h3><div class="scroll" id="boots"></div></div>
@@ -856,7 +838,7 @@ td.wrap{white-space:normal;max-width:320px}
         <header><h2>Midias publicadas</h2><span class="sub">pastas geradas em www\_dorpxe\media</span></header>
         <div class="body"><div class="list" id="medias"></div></div>
       </div>
-      <div class="nav"><button class="g" onclick="showStep(1)">Voltar: Servico e ativos</button><span></span></div>
+      <div class="nav"><button class="g" onclick="showStep(1)">Voltar: Ativos</button><span></span></div>
     </section>
   </main>
 </div>
@@ -914,11 +896,9 @@ function head(d){
   document.getElementById('statustext').textContent=live?('Em execucao - HTTP na porta '+d.httpPort):'Servico parado';
   document.getElementById('srvname').textContent=d.name+'  '+d.address+':'+d.httpPort;
   document.getElementById('upd').textContent='atualizado '+new Date().toLocaleTimeString('pt-BR');
-  document.getElementById('uptime').textContent=d.uptime||'--:--:--';
-  document.getElementById('updlbl').textContent=live?('em execucao ha '+d.uptime+' neste servidor'):'nenhum servico em execucao';
+  // Linha superior: contadores de atividade.
   var chips=[
-    ['Imagem',ms.txt,ms.cls],
-    ['Uptime',d.uptime,''],
+    ['Uptime',d.uptime||'--:--:--',''],
     ['DHCP',num(s.DhcpRequests),'acc'],
     ['Ofertas',num(s.DhcpOffers),'good'],
     ['TFTP',num(s.TftpRequests),''],
@@ -927,24 +907,22 @@ function head(d){
     ['Negados',num(s.DhcpDenied+s.TftpDenied),((s.DhcpDenied+s.TftpDenied)>0?'bad':'')],
     ['Hosts ativos',num((d.hosts||[]).length),'acc']
   ];
-    document.getElementById('chips').innerHTML=chips.map(function(x){
-      return '<span class="chip '+x[2]+'">'+esc(x[0])+' <b>'+esc(x[1])+'</b></span>'}).join('');
+  document.getElementById('chips').innerHTML=chips.map(function(x){
+    return '<span class="chip '+x[2]+'">'+esc(x[0])+' <b>'+esc(x[1])+'</b></span>'}).join('');
+  // Linha inferior: imagem publicada e estado do servico.
+  var mm=m0(d),dh=d.dhcp||{};
+  var info=[
+    ['Imagem',ms.txt,ms.cls,(mm.BootWim)?(mm.Slug||'perfil')+' - boot.wim publicado':(mm.ScanDir?('pasta: '+mm.ScanDir):'nao configurada - Passo 2')],
+    ['HTTP',live?'ativo':'inativo',live?'good':'bad','porta '+d.httpPort],
+    ['TFTP',c.tftp?'ativo':'inativo',c.tftp?'good':'bad','porta 69'],
+    ['DHCP proxy',c.dhcp?'ativo':'inativo',c.dhcp?'good':'bad',(dh.mode||'-')+' - next '+(dh.nextServer||'-')]
+  ];
+  document.getElementById('chips2').innerHTML=info.map(function(x){
+    return '<span class="chip '+x[2]+'">'+esc(x[0])+' <b>'+esc(x[1])+'</b>'+(x[3]?'<i>'+esc(x[3])+'</i>':'')+'</span>'}).join('');
     var w=document.getElementById('who');
     if(w){w.textContent=(d.user?'autenticado: '+d.user:(T?'acesso local (token)':'local'));w.title=w.textContent}
   [].forEach.call(document.querySelectorAll('.stepbtn'),function(b){
     var n=+b.getAttribute('data-go');b.classList.toggle('done',stepDone(n,d)&&n!==STEP)});
-  var tiles=[
-    ['HTTP (iPXE, arquivos, console)',live?'ativo':'inativo',live?'ok':'err','porta '+d.httpPort+' - '+d.address],
-    ['TFTP (iPXE, wimboot)',c.tftp?'ativo':'inativo',c.tftp?'ok':'err','porta 69'],
-    ['DHCP proxy',c.dhcp?'ativo':'inativo',c.dhcp?'ok':'err',((d.dhcp&&d.dhcp.mode)?d.dhcp.mode:'')+' - next '+((d.dhcp&&d.dhcp.nextServer)?d.dhcp.nextServer:'-')],
-    ['Imagem WinPE',ms.txt,ms.cls,(m0(d)&&m0(d).BootWim)?'boot.wim extraido':'rode Construir midia no Passo 2']
-  ];
-  document.getElementById('tiles').innerHTML=tiles.map(function(t){
-    return '<div class="tile"><b>'+esc(t[0])+' '+badge(t[1],t[2])+'</b><small class="mut">'+esc(t[3])+'</small></div>'}).join('');
-  var st=[['requisicoes DHCP',s.DhcpRequests],['ofertas',s.DhcpOffers],['negadas',s.DhcpDenied],['requisicoes TFTP',s.TftpRequests],
-          ['bytes TFTP',bytes(s.TftpBytes)],['requisicoes HTTP',s.HttpRequests],['bytes HTTP',bytes(s.HttpBytes)],['boots',s.Boots]];
-  document.getElementById('stats').innerHTML=st.map(function(x){
-    return '<div class="stat"><b>'+esc(num(x[1]))+'</b><i>'+esc(x[0])+'</i></div>'}).join('');
 }
 function m0(d){return (d&&d.mediaCfg)||{}}
 function media(d){
