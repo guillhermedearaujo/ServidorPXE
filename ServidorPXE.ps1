@@ -495,22 +495,28 @@ function Invoke-DorPXETest {
     Check 'atividade antes dos dispositivos' ($step1.IndexOf('id="boots"') -lt $step1.IndexOf('id="hosts"') -and $step1.IndexOf('id="boots"') -ge 0) 'Dispositivos aparece antes da atividade'
     # Barra de status em duas linhas: contadores em cima, imagem e servico embaixo.
     $sb = [regex]::Match($html, '(?s)<div class="pbar">(.*?)</div>\s*<div class="pbar polbar">').Value
-    Check 'barra de status com duas linhas' ($sb.Contains('id="chips"') -and $sb.Contains('id="chips2"') -and $sb.Contains('sbinfo')) 'linhas da barra de status NAO separadas'
-    # Os contadores sao montados por JS, entao a Linha superior se verifica no
-    # array `chips`, e a inferior no array `info` (ambos dentro de head()).
-    $linha1 = [regex]::Match($html, '(?s)var chips=\[(.*?)\];').Value
-    Check 'linha superior: array de contadores' ($linha1.Length -gt 0) 'array chips nao encontrado'
-    foreach ($c in @('Uptime', 'DHCP', 'Ofertas', 'TFTP', 'HTTP', 'Boots', 'Negados', 'Hosts ativos')) {
-        Check "linha superior com $c" ($linha1.Contains("'$c',")) "contador $c fora da linha superior"
+    Check 'barra de status com duas linhas' ($sb.Contains('id="chips"') -and $sb.Contains('id="chips2"') -and -not $sb.Contains('class="chips"')) 'linhas da barra de status NAO separadas'
+    Check 'linhas separadas por borda' ($html.Contains('.sbrow+.sbrow{border-top:1px solid var(--line)')) 'sem separador entre as linhas'
+    # Linha 1: Imagem, Servico e Uptime, no mesmo formato. Linha 2: os contadores
+    # de conexao de rede. Ambos montados por JS dentro de head().
+    $top = [regex]::Match($html, '(?s)var top=\[(.*?)\];').Value
+    Check 'linha 1: array de imagem/servico/uptime' ($top.Length -gt 0) 'array top nao encontrado'
+    foreach ($c in @("'Imagem',", "'Servico',", "'Uptime',")) {
+        Check "linha 1 com $($c.Trim(','))" ($top.Contains($c)) "item $c fora da linha 1"
     }
-    Check 'linha superior sem Imagem' (-not $linha1.Contains("'Imagem',")) 'imagem ainda na linha superior'
-    Check 'linha superior renderiza em chips' ($html.Contains("getElementById('chips').innerHTML=chips.map")) 'contadores nao renderizam na linha superior'
-    $linha2 = [regex]::Match($html, '(?s)var info=\[(.*?)\];').Value
-    Check 'linha inferior: array de imagem e servico' ($linha2.Length -gt 0) 'array info nao encontrado'
-    foreach ($c in @("'Imagem',", "'HTTP',", "'TFTP',", "'DHCP proxy',")) {
-        Check "linha inferior com $($c.Trim(','))" ($linha2.Contains($c)) "item $c fora da linha inferior"
+    Check 'linha 1 sem contadores' (-not ($top -match "'DHCP',|'Ofertas',|'TFTP',|'HTTP',|'Boots',|'Negados',|'Hosts ativos',")) 'contadores na linha 1'
+    Check 'servico com ponto de status' ($html.Contains("id=""dot""") -and $html.Contains("id=""statustext""") -and $top.Contains("'srv'")) 'pill de servico nao virou chip'
+    Check 'linha 1 renderiza em chips' ($html.Contains("document.getElementById('chips').innerHTML=top.map")) 'linha 1 nao renderiza'
+    $linha2 = [regex]::Match($html, '(?s)var chips=\[(.*?)\];').Value
+    Check 'linha 2: array de contadores' ($linha2.Length -gt 0) 'array chips nao encontrado'
+    foreach ($c in @('DHCP', 'Ofertas', 'TFTP', 'HTTP', 'Boots', 'Negados', 'Hosts ativos')) {
+        Check "linha 2 com $c" ($linha2.Contains("'$c',")) "contador $c fora da linha 2"
     }
-    Check 'linha inferior escreve em chips2' ($html.Contains("document.getElementById('chips2').innerHTML")) 'linha inferior nao renderiza'
+    Check 'linha 2 sem Imagem e sem Uptime' (-not $linha2.Contains("'Imagem',") -and -not $linha2.Contains("'Uptime',")) 'imagem/uptime ainda na linha 2'
+    Check 'linha 2 renderiza em chips2' ($html.Contains("document.getElementById('chips2').innerHTML=chips.map")) 'linha 2 nao renderiza'
+    # a barra precisa ter fallback estatico: head() so roda depois do 1o load
+    Check 'barra com fallback antes do 1o load' ($html.Contains('<div class="sbrow" id="chips"><span class="chip">')) 'sem fallback estatico na linha 1'
+    Check 'erro do load nao quebra sem dot' ($html.Contains("if(d){d.className='dot off'}") -and $html.Contains('sem resposta do servico')) 'caminho de erro sem guarda'
     Check 'usuario abaixo dos botoes' ($html -match '(?s)<div class="toolrow">.*?</div>\s*<span class="who" id="who"') 'usuario nao esta abaixo de Atualizar/Reiniciar'
     Check 'botao Parar removido' (-not $html.Contains("ctl('stop')")) 'ainda chama ctl(stop)'
     Check 'reiniciar disponivel' ($html.Contains("ctl('restart')")) 'sem botao reiniciar'

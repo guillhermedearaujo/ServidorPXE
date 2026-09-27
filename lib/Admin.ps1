@@ -562,8 +562,6 @@ h1,h2,h3{margin:0}
   color:#fff;background:linear-gradient(140deg,var(--acc),#7c3aed);box-shadow:0 6px 18px rgba(59,130,246,.35);flex:none}
 .brand b{display:block;font-size:15px;letter-spacing:.2px}
 .brand span{display:block;font-size:12px;color:var(--dim)}
-.pill{display:inline-flex;align-items:center;gap:8px;padding:6px 12px;border-radius:99px;
-  border:1px solid var(--line);background:var(--card2);font-size:13px;white-space:nowrap}
 .dot{width:9px;height:9px;border-radius:50%;background:var(--dim);flex:none}
 .dot.on{background:var(--ok);box-shadow:0 0 0 4px rgba(34,197,94,.16);animation:pulse 2.4s ease-in-out infinite}
 .dot.off{background:var(--err);box-shadow:0 0 0 4px rgba(239,68,68,.14)}
@@ -574,15 +572,15 @@ h1,h2,h3{margin:0}
 .chip b{font-size:14px;color:var(--fg);font-variant-numeric:tabular-nums}
 .chip.good b{color:var(--ok)} .chip.bad b{color:var(--err)} .chip.acc b{color:var(--acc2)} .chip.warn b{color:var(--warn)}
 .chip.state{align-items:center}
-.tools{display:flex;flex-direction:column;align-items:flex-end;gap:5px;flex-wrap:wrap}
+ .tools{display:flex;flex-direction:column;align-items:flex-end;gap:5px;flex-wrap:wrap;margin-left:auto}
 .toolrow{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
 .who{font-size:12px;color:var(--dim);max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:right}
  .pbar{max-width:1440px;margin:0 auto;padding:0 18px 10px;display:flex;flex-wrap:wrap;gap:8px 10px;align-items:center}
  .sbrow{display:flex;gap:8px 10px;align-items:center;flex-wrap:wrap;width:100%;min-width:0}
- .sbrow .chips{flex:1 1 auto}
- .sbinfo{border-top:1px solid var(--line);padding-top:8px;margin-top:2px}
+ .sbrow+.sbrow{border-top:1px solid var(--line);padding-top:8px;margin-top:2px}
  .sbmsg{font-size:12px;color:var(--dim);flex:0 1 auto;min-width:0}
  .chip i{font-style:normal;font-size:11.5px;color:var(--dim)}
+ .chip .dot{align-self:center;margin-right:1px}
  .polbar{border-top:1px solid var(--line);padding-top:9px}
 .pbar>label{font-size:12px;color:var(--dim);font-weight:600;white-space:nowrap}
 .pbar select{width:auto;min-width:148px;padding:5px 9px;font-size:12.5px}
@@ -686,19 +684,21 @@ td.wrap{white-space:normal;max-width:320px}
   .stepbtn small{display:none}
   .hint{display:none}
 }
-@media (max-width:620px){
-  body{font-size:14px}
-  .topin{padding:10px 12px;gap:10px}
-  .sbrow{overflow-x:auto;flex-wrap:nowrap;padding-bottom:2px}
-  .sbrow .chips{flex-wrap:nowrap}
-  .sbmsg{display:none}
-  .tools{order:2;margin-left:auto}
-.pbar{padding:0 12px 10px}
-.pbar select{flex:1 1 140px;min-width:0}
-.pbar .polhint{flex:1 1 100%}
-  .nav{flex-direction:column-reverse}
-  .nav button{width:100%}
-}
+  @media (max-width:620px){
+    body{font-size:14px}
+    .topin{padding:10px 12px;gap:10px}
+    .sbrow{overflow-x:auto;flex-wrap:nowrap;padding-bottom:2px}
+    .sbmsg{display:none}
+    /* fim do breakpoint: botoes e usuario colados na extrema direita */
+    .tools{order:2;margin-left:auto;align-items:flex-end;max-width:100%}
+    .toolrow{justify-content:flex-end;flex-wrap:wrap;row-gap:5px}
+    .who{text-align:right}
+  .pbar{padding:0 12px 10px}
+  .pbar select{flex:1 1 140px;min-width:0}
+  .pbar .polhint{flex:1 1 100%}
+    .nav{flex-direction:column-reverse}
+    .nav button{width:100%}
+  }
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 </style>
 </head>
@@ -709,7 +709,6 @@ td.wrap{white-space:normal;max-width:320px}
       <div class="mark">DP</div>
       <div><b>ServidorPXE $version</b><span id="srvname">-</span></div>
     </div>
-    <div class="pill"><i class="dot off" id="dot"></i><span id="statustext">consultando...</span></div>
     <div class="tools">
       <div class="toolrow">
         <label class="tiny mut" title="reconsultar o servico a cada 3 segundos"><input type="checkbox" id="auto" checked style="width:auto;margin-right:5px"> auto</label>
@@ -721,11 +720,9 @@ td.wrap{white-space:normal;max-width:320px}
     </div>
   </div>
   <div class="pbar">
-    <div class="sbrow" id="chips"></div>
-    <div class="sbrow sbinfo">
-      <div class="chips" id="chips2"></div>
-      <span class="sbmsg" id="ctlmsg"></span>
-    </div>
+    <div class="sbrow" id="chips"><span class="chip"><b>consultando...</b></span></div>
+    <div class="sbrow" id="chips2"></div>
+    <span class="sbmsg" id="ctlmsg"></span>
   </div>
   <div class="pbar polbar">
     <label>Politica de boot</label>
@@ -892,13 +889,20 @@ function midState(d){
 }
 function head(d){
   var c=d.components||{},s=d.stats||{},live=!!c.http,ms=midState(d);
-  document.getElementById('dot').className='dot '+(live?'on':'off');
-  document.getElementById('statustext').textContent=live?('Em execucao - HTTP na porta '+d.httpPort):'Servico parado';
-  document.getElementById('srvname').textContent=d.name+'  '+d.address+':'+d.httpPort;
   document.getElementById('upd').textContent='atualizado '+new Date().toLocaleTimeString('pt-BR');
-  // Linha superior: contadores de atividade.
+  var mm=m0(d);
+  // Linha 1: imagem, servico e uptime, no mesmo formato.
+  var top=[
+    ['Imagem',ms.txt,ms.cls,(mm.BootWim)?((mm.Slug||'perfil')+' - boot.wim publicado'):(mm.ScanDir?('pasta: '+mm.ScanDir):'nao configurada - Passo 2'),''],
+    ['Servico',live?'em execucao':'parado',live?'good':'bad',live?('HTTP na porta '+d.httpPort):'nenhuma instancia em execucao','srv'],
+    ['Uptime',d.uptime||'--:--:--','','','']
+  ];
+  document.getElementById('chips').innerHTML=top.map(function(x){
+    var extra=x[4]==='srv'?'<i class="dot '+(live?'on':'off')+'" id="dot"></i>':'';
+    var val=x[4]==='srv'?'<b id="statustext">'+esc(x[1])+'</b>':'<b>'+esc(x[1])+'</b>';
+    return '<span class="chip '+x[2]+'">'+extra+esc(x[0])+' '+val+(x[3]?'<i>'+esc(x[3])+'</i>':'')+'</span>'}).join('');
+  // Linha 2: status de conexao de rede.
   var chips=[
-    ['Uptime',d.uptime||'--:--:--',''],
     ['DHCP',num(s.DhcpRequests),'acc'],
     ['Ofertas',num(s.DhcpOffers),'good'],
     ['TFTP',num(s.TftpRequests),''],
@@ -907,18 +911,9 @@ function head(d){
     ['Negados',num(s.DhcpDenied+s.TftpDenied),((s.DhcpDenied+s.TftpDenied)>0?'bad':'')],
     ['Hosts ativos',num((d.hosts||[]).length),'acc']
   ];
-  document.getElementById('chips').innerHTML=chips.map(function(x){
+  document.getElementById('chips2').innerHTML=chips.map(function(x){
     return '<span class="chip '+x[2]+'">'+esc(x[0])+' <b>'+esc(x[1])+'</b></span>'}).join('');
-  // Linha inferior: imagem publicada e estado do servico.
-  var mm=m0(d),dh=d.dhcp||{};
-  var info=[
-    ['Imagem',ms.txt,ms.cls,(mm.BootWim)?(mm.Slug||'perfil')+' - boot.wim publicado':(mm.ScanDir?('pasta: '+mm.ScanDir):'nao configurada - Passo 2')],
-    ['HTTP',live?'ativo':'inativo',live?'good':'bad','porta '+d.httpPort],
-    ['TFTP',c.tftp?'ativo':'inativo',c.tftp?'good':'bad','porta 69'],
-    ['DHCP proxy',c.dhcp?'ativo':'inativo',c.dhcp?'good':'bad',(dh.mode||'-')+' - next '+(dh.nextServer||'-')]
-  ];
-  document.getElementById('chips2').innerHTML=info.map(function(x){
-    return '<span class="chip '+x[2]+'">'+esc(x[0])+' <b>'+esc(x[1])+'</b>'+(x[3]?'<i>'+esc(x[3])+'</i>':'')+'</span>'}).join('');
+    document.getElementById('srvname').textContent=d.name+'  '+d.address+':'+d.httpPort;
     var w=document.getElementById('who');
     if(w){w.textContent=(d.user?'autenticado: '+d.user:(T?'acesso local (token)':'local'));w.title=w.textContent}
   [].forEach.call(document.querySelectorAll('.stepbtn'),function(b){
@@ -1036,10 +1031,14 @@ function load(manual){
   return api('/pxe/api/status').then(function(d){
     render(d);
     if(manual){clearDirty();toast('Console atualizado')}
-  }).catch(function(e){
-    document.getElementById('dot').className='dot off';
-    document.getElementById('statustext').textContent='sem resposta do servico';
-  });
+    }).catch(function(e){
+      // dot/statustext sao gerados por head(); se a 1a consulta ja falhar eles
+      // nao existem ainda, entao a guarda evita TypeError e o toast avisa.
+      var d=document.getElementById('dot'),t=document.getElementById('statustext');
+      if(d){d.className='dot off'}
+      if(t){t.textContent='sem resposta do servico'}
+      if(!t){document.getElementById('chips').innerHTML='<span class="chip bad">Servico <b>sem resposta</b></span>';toast('sem resposta do servico',true)}
+    });
 }
 function savePolicy(){
   var mode=document.getElementById('pmode').value;
