@@ -142,15 +142,24 @@ Para descobrir o IP e quem pode entrar:
 
 ## Como usar o console
 
-O console tem **duas abas** e atualiza sozinho a cada 3 segundos. Os dois
-seletores de **politica de boot** ficam na **barra de status superior**, entao
-nao importa em qual aba voce esta para ver ou trocar a politica.
+O console tem **dois passos** e atualiza sozinho a cada 3 segundos. O
+**passo 1 do fluxo** e a **politica de boot**, que fica na **barra de status
+superior**; os dois seletores estao sempre a vista, em qualquer passo. A ordem
+e sempre:
 
-### Aba Servico e ativos
+1. **Politica de boot** - barra superior, em qualquer pagina.
+2. **Midia (ISO)** - aponte a ISO e monte o WinPE.
+3. **Ativos** - acompanhe os dispositivos e cadastre os equipamentos.
+
+### Passo 3 - Ativos
 
 Estado do proxy DHCP, do TFTP e do HTTP, tempo no ar, contadores de requisicao,
 a **atividade recente** (boot, DHCP e TFTP) e, logo abaixo, os **ativos**:
 
+- **Transferencia em andamento** - barra por ativo, com bytes entregues,
+  MB/GB e porcentagem. Mede a fase **TFTP do WinPE**, que e o que passa pelo
+  servidor. O `install.wim` nao entra: o Windows Setup le esse arquivo direto
+  do share SMB, sem passar pelo ServidorPXE, entao nao da para medir aqui.
 - **Dispositivos** - quem foi visto nos ultimos 20 minutos.
 - **Cadastrar equipamento** - MAC vira a chave de autorizacao, com perfil,
   acao no boot, modelo e observacao.
@@ -172,7 +181,7 @@ E aqui que fica o **diagnostico de ambiente**, com 11 verificacoes:
 | Politica x cadastro | quantos dispositivos estao autorizados |
 | Autenticacao Windows | se o login tem como funcionar (assembly + grupos) |
 
-### Aba Midia (ISO)
+### Passo 2 - Midia (ISO)
 
 Aponta a pasta ou o arquivo `.iso`, escolhe os perfis e monta o WinPE. O
 `Construir midia` extrai a ISO, monta o `boot.wim` por perfil, gera o

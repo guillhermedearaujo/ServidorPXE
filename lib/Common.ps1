@@ -464,10 +464,30 @@ function New-DorPXEState {
     $s['DhcpLog'] = [System.Collections.ArrayList]::Synchronized((New-Object System.Collections.ArrayList))
     $s['TftpLog'] = [System.Collections.ArrayList]::Synchronized((New-Object System.Collections.ArrayList))
     $s['TftpSeen'] = [System.Collections.ArrayList]::Synchronized((New-Object System.Collections.ArrayList))
+    # Bytes TFTP por IP de cliente. O TFTP so conhece o IP (o MAC vem do DHCP),
+    # entao o console cruza esta tabela com a lista de hosts ativos.
+    $s['TftpByIp'] = [hashtable]::Synchronized(@{})
     $s['Pool'] = $null
     $s['Running'] = $true
     $s['Workers'] = @{}
     return $s
+}
+
+function Add-DorPXETftpClientBytes {
+    # Soma bytes entregues a um IP. Chamado durante a transferencia para o
+    # console mostrar progresso por ativo, e nao so o total global.
+    param($State, [string]$Ip, [long]$Bytes, [string]$File)
+    if (-not $State -or -not $Ip -or $Bytes -le 0) { return }
+    $tab = $State.TftpByIp
+    if (-not $tab) { return }
+    $cur = $tab[$Ip]
+    if (-not $cur) {
+        $cur = [pscustomobject]@{ Ip = $Ip; Bytes = 0L; Files = 0; StartedAt = Get-Date; LastAt = Get-Date }
+        $tab[$Ip] = $cur
+    }
+    $cur.Bytes = $cur.Bytes + $Bytes
+    $cur.LastAt = Get-Date
+    if ($File) { $cur.Files = $cur.Files + 1 }
 }
 
 function Add-DorPXEBootLog {

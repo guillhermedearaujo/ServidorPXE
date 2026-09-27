@@ -110,6 +110,10 @@ function Invoke-DorPXETftpTransfer {
     $dst = New-Object Net.IPEndPoint([Net.IPAddress]::Parse($ClientIp), $ClientPort)
     $fs = New-Object IO.FileStream($FilePath, [IO.FileMode]::Open, [IO.FileAccess]::Read, [IO.FileShare]::Read, 65536)
     $sent = 0L
+    # progresso por cliente: publica a cada 256 KB para nao disputar o lock a
+    # cada bloco (blksize pode ser 512 B, o que seria 16x mais caro).
+    $marca = 0L
+    $passo = 256KB
     try {
         $buf = New-Object byte[] $blksize
         $block = 1
@@ -147,6 +151,10 @@ function Invoke-DorPXETftpTransfer {
                     $pending = $false
                     $retries = 0
                     $block++
+                    if (($sent - $marca) -ge $passo) {
+                        Add-DorPXETftpClientBytes -State $Job.State -Ip $ClientIp -Bytes ($sent - $marca) -File $FilePath
+                        $marca = $sent
+                    }
                     if ($done -eq 'pending-last') { $done = $true }
                 }
                 elseif ($rb -eq ($block - 1)) {
@@ -156,6 +164,8 @@ function Invoke-DorPXETftpTransfer {
             elseif ($op -eq 5) { break }
         }
         $Job.State.Stats.TftpBytes = $Job.State.Stats.TftpBytes + $sent
+        # o resto do que ainda nao foi publicado (a cada 256 KB)
+        if (($sent - $marca) -gt 0) { Add-DorPXETftpClientBytes -State $Job.State -Ip $ClientIp -Bytes ($sent - $marca) -File $FilePath }
         return $sent
     }
     finally {

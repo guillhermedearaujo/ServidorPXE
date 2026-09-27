@@ -7,6 +7,20 @@ e o versionamento segue [SemVer](https://semver.org/lang/pt-BR/).
 ## [Nao publicado]
 
 ### Adicionado
+- **Barra de progresso por ativo** no passo de Ativos, com bytes entregues,
+  MB/GB e porcentagem de cada cliente. Mede a fase **TFTP do WinPE**
+  (wimboot + `boot.wim` + BCD/`boot.sdi`/fonte), que e o que de fato passa
+  pelo servidor. O rotulo deixa explicito que o `install.wim` vem pelo share
+  SMB direto para o cliente e **nao e medido pelo console** - o Windows Setup
+  le o arquivo do share sem passar pelo ServidorPXE.
+- Contagem de bytes TFTP **por IP de cliente** durante o envio (a cada 256 KB,
+  para nao disputar o lock a cada bloco), exposta em `/pxe/api/status` como
+  `tftpByIp` e cruzada com a lista de hosts ativos para virar MAC + progresso.
+- `Get-DorPXEBootPayloadBytes`: soma dos arquivos que um cliente baixa por TFTP,
+  usada como denominador da porcentagem.
+- **Fluxo do console na ordem 1, 2, 3**: `1. Politica de boot` (barra
+  superior), `2. Midia (ISO)` e `3. Ativos`. Os menus Ativos e Midia foram
+  invertidos: a Midia vem primeiro, com o Ativos como ultimo passo.
 - **Licenca GPL-3.0** (`LICENSE`) e a secao de Licenca no README, com a
   licenca dos binarios de terceiros (iPXE e wimboot, GPL-2.0) e o aviso de que
   nenhum conteudo da Microsoft e redistribuido.

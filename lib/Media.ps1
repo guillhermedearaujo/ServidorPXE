@@ -39,6 +39,42 @@ function Get-DorPXEMediaRoot {
 #   1) boot.wim ja extraido da ISO (www\_dorpxe\media\<slug>\sources\boot.wim)
 #   2) a propria ISO configurada (Build-Media monta e extrai)
 #   3) a pasta informada em Media.IsoDir
+function Get-DorPXEBootPayloadBytes {
+    # Total que um cliente BAIXA por TFTP antes do Windows Setup assumir:
+    # wimboot + BCD + boot.sdi + fonte + boot.wim (e o extra i386, se houver).
+    # NAO inclui o install.wim: ele vem pelo share SMB direto para o cliente,
+    # sem passar pelo servidor, entao nao da para medir daqui.
+    [CmdletBinding()]
+    param($Config, [string]$Profile = 'win11pro')
+    $p = Get-DorPXEPath
+    $tot = 0L
+    $itens = @()
+    $wimboot = Join-Path $p.Www 'ipxe\wimboot'
+    if (Test-Path -LiteralPath $wimboot) {
+        $m = @(Get-ChildItem -LiteralPath $wimboot -Recurse -File -ErrorAction SilentlyContinue | Measure-Object -Property Length -Sum)
+        if ($m.Count -gt 0) { $tot += [long]$m.Sum; $itens += "wimboot=$($m.Sum)" }
+    }
+    foreach ($mode in @('uefi', 'bios')) {
+        $shared = Join-Path $p.WinPe (Join-Path 'shared' $mode)
+        foreach ($rel in @('BCD', 'boot.sdi', 'Fonts\segmono_boot.ttf')) {
+            $f = Join-Path $shared $rel
+            if (Test-Path -LiteralPath $f -PathType Leaf) {
+                $len = (Get-Item -LiteralPath $f).Length
+                $tot += [long]$len; $itens += "$mode/$rel=$len"
+            }
+        }
+        $prof = Join-Path $p.WinPe (Join-Path 'profiles' (Join-Path $Profile $mode))
+        foreach ($rel in @('boot.wim', 'boot.i386.wim')) {
+            $f = Join-Path $prof $rel
+            if (Test-Path -LiteralPath $f -PathType Leaf) {
+                $len = (Get-Item -LiteralPath $f).Length
+                $tot += [long]$len; $itens += "$mode/$rel=$len"
+            }
+        }
+    }
+    [pscustomobject]@{ Bytes = $tot; Items = $itens }
+}
+
 function Get-DorPXEMediaBootWimDir {
     [CmdletBinding()]
     param($Config)

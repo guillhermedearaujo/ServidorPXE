@@ -414,6 +414,22 @@ function Invoke-DorPXETest {
     $t2 = ConvertFrom-DorPXETftpRequest -Bytes ([byte[]]@(0, 4, 0, 1))
     Check 'RRQ invalido rejeitado' ($null -eq $t2) ''
 
+    Write-Output '5b) Progresso por IP (TFTP)'
+    $st = New-DorPXEState
+    Check 'estado nasce com TftpByIp' ($null -ne $st.TftpByIp -and $st.TftpByIp.Count -eq 0) 'TftpByIp nao inicializou'
+    Add-DorPXETftpClientBytes -State $st -Ip '10.0.0.5' -Bytes 1024 -File 'a'
+    Add-DorPXETftpClientBytes -State $st -Ip '10.0.0.5' -Bytes 2048 -File 'b'
+    Add-DorPXETftpClientBytes -State $st -Ip '10.0.0.6' -Bytes 512 -File 'a'
+    Check 'bytes somam por IP' ($st.TftpByIp['10.0.0.5'].Bytes -eq 3072) "$($st.TftpByIp['10.0.0.5'].Bytes)"
+    Check 'contagem separada por IP' ($st.TftpByIp['10.0.0.6'].Bytes -eq 512) "$($st.TftpByIp['10.0.0.6'].Bytes)"
+    Check 'arquivos contados por IP' ($st.TftpByIp['10.0.0.5'].Files -eq 2) "$($st.TftpByIp['10.0.0.5'].Files)"
+    Check 'IP desconhecido e ignorado' ($null -eq (Add-DorPXETftpClientBytes -State $st -Ip '' -Bytes 10)) ''
+
+    # o payload de boot e a soma dos arquivos que o cliente baixa por TFTP
+    $pay = Get-DorPXEBootPayloadBytes -Config $Cfg
+    Check 'payload de boot e um inteiro' ($pay.Bytes -ge 0 -and $pay.Bytes -eq [long]$pay.Bytes) "$($pay.Bytes)"
+    Check 'payload nunca inclui o install.wim' ((@($pay.Items | Where-Object { $_ -match 'install\.wim' })).Count -eq 0) 'install.wim entrou no payload'
+
     Write-Output '6) Scripts iPXE'
     $ae = Get-DorPXEAutoExecScript -Config $Cfg
     Check 'autoexec ipxe' ($ae.StartsWith('#!ipxe') -and $ae -match '/pxe/boot\.ipxe\?mac=') ''
@@ -484,15 +500,30 @@ function Invoke-DorPXETest {
     Check 'aba Atividade removida' (-not $html.Contains('showStep(5)') -and -not $html.Contains('data-step="5"')) 'aba 5 ainda presente'
     Check 'aba 3 eliminada' (-not $html.Contains('data-step="3"') -and -not $html.Contains('showStep(3)') -and -not $html.Contains('data-go="3"')) 'aba 3 ainda presente'
     Check 'politica na barra de status' ($html -match '(?s)<div class="pbar">.*?id="pmode".*?id="pdef".*?</header>') 'seletores de politica fora da barra superior'
-    # O passo 1 virou "Ativos": o uptime, os componentes e os contadores sairam
-    # de containers proprios e sobiram para a barra de status.
+    # Fluxo: 1 Politica de boot (barra superior), 2 Midia (ISO), 3 Ativos.
+    # No DOM o data-step=1 e Midia e o data-step=2 e Ativos; o numero exibido
+    # no botao e o do fluxo, nao o do data-step.
     $step1 = [regex]::Match($html, '(?s)<section class="step" data-step="1">(.*?)</section>').Value
-    Check 'passo 1 com as tabelas de evento' ($step1.Contains('id="boots"') -and $step1.Contains('id="dhcp"') -and $step1.Contains('id="tftp"')) 'tabelas de evento fora do passo 1'
-    Check 'passo 1 chamado Ativos' ($html.Contains('<b>Ativos</b>') -and $html.Contains('<h2>1. Ativos</h2>')) 'aba 1 nao se chama Ativos'
-    Check 'passo 1 com descricao Dispositivos e atividade' ($html.Contains('<small>Dispositivos e atividade</small>') -and $html.Contains('<span class="sub">Dispositivos e atividade</span>')) 'descricao do passo 1 divergente'
-    Check 'containers removidos do passo 1' (-not $html.Contains('Servico e ativos') -and -not $html.Contains('<h2>Componentes</h2>') -and -not $html.Contains('<h2>Contadores</h2>') -and -not $html.Contains('id="tiles"') -and -not $html.Contains('id="stats"') -and -not $html.Contains('id="uptime"') -and -not $html.Contains('id="updlbl"')) 'container antigo do passo 1 ainda presente'
-    Check 'ativos dentro do passo 1' ($step1.Contains('id="hosts"') -and $step1.Contains('id="dmac"') -and $step1.Contains('id="devsWrap"')) 'cards de dispositivos fora do passo 1'
-    Check 'atividade antes dos dispositivos' ($step1.IndexOf('id="boots"') -lt $step1.IndexOf('id="hosts"') -and $step1.IndexOf('id="boots"') -ge 0) 'Dispositivos aparece antes da atividade'
+    $stepAt = [regex]::Match($html, '(?s)<section class="step" data-step="2"[^>]*>(.*?)</section>').Value
+    Check 'so a primeira aba vem aberta' ($html.Contains('<section class="step" data-step="1">') -and $html.Contains('<section class="step" data-step="2" hidden>')) 'as duas abas abrem juntas ou nenhuma'
+    Check 'ordem do fluxo: Midia antes de Ativos' ($html.IndexOf('<h2>2. Midia (ISO)</h2>') -ge 0 -and $html.IndexOf('<h2>2. Midia (ISO)</h2>') -lt $html.IndexOf('<h2>3. Ativos</h2>')) 'Midia nao vem antes de Ativos'
+    Check 'nav: Midia e o numero 2' ($html -match '<span class="n">2</span><span><b>Midia \(ISO\)</b>') 'nav nao numera Midia como 2'
+    Check 'nav: Ativos e o numero 3' ($html -match '<span class="n">3</span><span><b>Ativos</b>') 'nav nao numera Ativos como 3'
+    Check 'politica de boot e o passo 1 do fluxo' ($html -match '<label><b class="flownum">1</b>\s*Politica de boot</label>') 'linha da politica sem o numero 1'
+    Check 'stepDone de Midia verifica boot.wim' ($html -match "(?s)function stepDone.*?if\(n===1\).*?BootWim") 'stepDone de Midia fora de ordem'
+    Check 'navegacao invertida' ($html.Contains('showStep(2)">Proximo: Ativos') -and $html.Contains('showStep(1)">Voltar: Midia (ISO)')) 'botoes de navegacao nao acompanharam a inversao'
+    Check 'passo de Ativos com as tabelas de evento' ($stepAt.Contains('id="boots"') -and $stepAt.Contains('id="dhcp"') -and $stepAt.Contains('id="tftp"')) 'tabelas de evento fora do passo de Ativos'
+    Check 'passo de Ativos chamado Ativos' ($html.Contains('<h2>3. Ativos</h2>') -and $html.Contains('<b>Ativos</b>')) 'aba de Ativos fora de ordem'
+    Check 'passo de Ativos com descricao Dispositivos e atividade' ($html.Contains('<small>Dispositivos e atividade</small>') -and $html.Contains('<span class="sub">Dispositivos e atividade</span>')) 'descricao do passo de Ativos divergente'
+    Check 'containers removidos do passo de Ativos' (-not $html.Contains('Servico e ativos') -and -not $html.Contains('<h2>Componentes</h2>') -and -not $html.Contains('<h2>Contadores</h2>') -and -not $html.Contains('id="tiles"') -and -not $html.Contains('id="stats"') -and -not $html.Contains('id="uptime"') -and -not $html.Contains('id="updlbl"')) 'container antigo ainda presente'
+    Check 'ativos dentro do passo de Ativos' ($stepAt.Contains('id="hosts"') -and $stepAt.Contains('id="dmac"') -and $stepAt.Contains('id="devsWrap"')) 'cards de dispositivos fora do passo de Ativos'
+    Check 'atividade antes dos dispositivos' ($stepAt.IndexOf('id="boots"') -lt $stepAt.IndexOf('id="hosts"') -and $stepAt.IndexOf('id="boots"') -ge 0) 'Dispositivos aparece antes da atividade'
+    # Progresso por ativo: mede a fase TFTP do WinPE, nunca o install.wim.
+    Check 'container de transferencia em andamento' ($html.Contains('id="xfer"') -and $html.Contains('por ativo conectado')) 'card de transferencia ausente'
+    Check 'progresso usa a tabela por IP' ($html.Contains('d.bootPayloadBytes') -and $html.Contains('d.ativos') -and $html.Contains('x.Pct')) 'barra de progresso nao le o payload por ativo'
+    Check 'aviso de que o install.wim vem pelo share' ($html.Contains('install.wim vem pelo share SMB') -and $html.Contains('nao e medido aqui')) 'sem aviso sobre o install.wim'
+    Check 'tabela TftpByIp no estado compartilhado' (Select-String -Path (Join-Path (Split-Path -Parent $root) 'lib\Common.ps1') -Pattern "\['TftpByIp'\]" -Quiet) 'tabela TftpByIp ausente do estado'
+    Check 'TFTP acumula bytes por IP durante o envio' ((Select-String -Path (Join-Path (Split-Path -Parent $root) 'lib\Tftp.ps1') -Pattern 'Add-DorPXETftpClientBytes' -AllMatches).Matches.Count -ge 2) 'acumulo por IP ausente no loop de blocos'
     # Barra de status em duas linhas: contadores em cima, imagem e servico embaixo.
     $sb = [regex]::Match($html, '(?s)<div class="pbar">(.*?)</div>\s*<div class="pbar polbar">').Value
     Check 'barra de status com duas linhas' ($sb.Contains('id="chips"') -and $sb.Contains('id="chips2"') -and -not $sb.Contains('class="chips"')) 'linhas da barra de status NAO separadas'

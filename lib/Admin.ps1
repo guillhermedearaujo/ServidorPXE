@@ -285,6 +285,35 @@ function Get-DorPXEStatusPayload {
         }
     }
     $hosts = @($vistos.Values | Sort-Object At -Descending)
+    # progresso por ativo: o TFTP so sabe o IP, então cruza com a tabela por IP.
+    $janelaBytes = (Get-Date).AddMinutes(-20)
+    $porIp = $State.TftpByIp
+    $payload = 0L
+    try { $payload = [long](Get-DorPXEBootPayloadBytes -Config $Config).Bytes } catch { $payload = 0L }
+    $tftpByIp = @()
+    if ($porIp) {
+        foreach ($k in $porIp.Keys) {
+            $c = $porIp[$k]
+            if (-not $c -or $c.LastAt -lt $janelaBytes) { continue }
+            $tftpByIp += [pscustomobject]@{
+                Ip = $c.Ip; Bytes = [long]$c.Bytes; Files = $c.Files
+                Seconds = [Math]::Max(1, [int]((Get-Date) - $c.StartedAt).TotalSeconds)
+                Since = $c.LastAt.ToString('o')
+            }
+        }
+    }
+    # junta: host ativo + bytes do IP + % sobre o payload WinPE
+    $ativos = @()
+    foreach ($h in $hosts) {
+        $b = @($tftpByIp | Where-Object { $h.Ip -and $_.Ip -eq $h.Ip })
+        $bytes = 0L
+        foreach ($x in $b) { $bytes += $x.Bytes }
+        $pct = if ($payload -gt 0) { [Math]::Min(100, [Math]::Round(($bytes * 100.0) / $payload, 1)) } else { 0 }
+        $ativos += [pscustomobject]@{
+            Mac = $h.Mac; Ip = $h.Ip; At = $h.At; Type = $h.Type
+            Bytes = $bytes; Pct = $pct; Active = ($bytes -gt 0)
+        }
+    }
     [pscustomobject]@{
         version    = (Get-DorPXEVersion)
         name       = $Job.ServerName
@@ -316,6 +345,9 @@ function Get-DorPXEStatusPayload {
             Slug        = [string]$Config.Media.Slug
         }
         hosts      = $hosts
+        ativos     = $ativos
+        bootPayloadBytes = $payload
+        tftpByIp   = $tftpByIp
         logFile    = (Get-DorPXEPath).LogFile
         user       = $User
         env        = @(Get-DorPXEEnvironmentReport -Config $Config -Job $Job)
@@ -582,6 +614,9 @@ h1,h2,h3{margin:0}
  .chip i{font-style:normal;font-size:11.5px;color:var(--dim)}
  .chip .dot{align-self:center;margin-right:1px}
  .polbar{border-top:1px solid var(--line);padding-top:9px}
+ .polbar label{display:inline-flex;align-items:center;gap:7px}
+ .flownum{display:inline-flex;align-items:center;justify-content:center;width:19px;height:19px;border-radius:6px;
+  background:var(--acc2);color:#fff;font-size:11.5px;font-weight:700;line-height:1}
 .pbar>label{font-size:12px;color:var(--dim);font-weight:600;white-space:nowrap}
 .pbar select{width:auto;min-width:148px;padding:5px 9px;font-size:12.5px}
 .pbar .polhint{font-size:12px;color:var(--dim);flex:1 1 240px;min-width:0}
@@ -670,6 +705,14 @@ td.wrap{white-space:normal;max-width:320px}
 .host i{width:7px;height:7px;border-radius:50%;background:var(--ok);font-style:normal}
 .host.deny i{background:var(--err)}
 .empty{padding:18px;text-align:center;color:var(--dim);font-size:13px}
+ /* progresso de transferencia por ativo (fase TFTP do WinPE) */
+ .xh{display:flex;flex-wrap:wrap;gap:8px;align-items:baseline;margin-bottom:10px;font-size:12.5px;color:var(--dim)}
+ .xh b{color:var(--fg);font-variant-numeric:tabular-nums}
+ .xrow{margin-bottom:10px}
+ .xhdr{display:flex;flex-wrap:wrap;gap:8px;align-items:baseline;margin-bottom:4px}
+ .xpct{margin-left:auto;font-variant-numeric:tabular-nums}
+ .xbar{height:8px;border-radius:99px;background:var(--card2);border:1px solid var(--line);overflow:hidden}
+ .xbar i{display:block;height:100%;background:var(--acc2);border-radius:99px;transition:width .4s ease}
 .nav{display:flex;justify-content:space-between;gap:10px;margin-top:4px}
 #toast{position:fixed;right:16px;bottom:16px;z-index:60;background:var(--card);border:1px solid var(--line2);
   border-left:4px solid var(--acc);border-radius:var(--r2);padding:11px 15px;box-shadow:var(--sh);display:none;max-width:min(420px,92vw)}
@@ -725,7 +768,7 @@ td.wrap{white-space:normal;max-width:320px}
     <span class="sbmsg" id="ctlmsg"></span>
   </div>
   <div class="pbar polbar">
-    <label>Politica de boot</label>
+    <label><b class="flownum">1</b> Politica de boot</label>
     <select id="pmode" onchange="markDirty('pmode');policyHint()" title="Quem pode iniciar pela rede">
       <option value="AllowList">Somente cadastrados</option>
       <option value="Open">Todos os equipamentos</option></select>
@@ -739,64 +782,14 @@ td.wrap{white-space:normal;max-width:320px}
 
 <div class="shell">
   <nav class="steps" id="steps" aria-label="Passos">
-    <button class="stepbtn" data-go="1" aria-current="true"><span class="n">1</span><span><b>Ativos</b><small>Dispositivos e atividade</small></span></button>
-    <button class="stepbtn" data-go="2"><span class="n">2</span><span><b>Midia (ISO)</b><small>imagem do Windows 11</small></span></button>
-    <div class="hint">Logs no arquivo <b>servidorpxe.log</b> na raiz do projeto.<br>No Passo 2 voce aponta a imagem ISO do Windows 11.</div>
+    <button class="stepbtn" data-go="1" aria-current="true"><span class="n">2</span><span><b>Midia (ISO)</b><small>imagem do Windows 11</small></span></button>
+    <button class="stepbtn" data-go="2"><span class="n">3</span><span><b>Ativos</b><small>Dispositivos e atividade</small></span></button>
+    <div class="hint">Logs no arquivo <b>servidorpxe.log</b> na raiz do projeto.<br>Comece pela <b>politica de boot</b> na barra acima, depois aponte a ISO e so entao cadastre os equipamentos.</div>
   </nav>
 
   <main>
-    <!-- ================= PASSO 1: ATIVOS ================= -->
+    <!-- ================= MIDIA (passo 2 do fluxo) ================= -->
     <section class="step" data-step="1">
-      <div class="card">
-        <header><h2>1. Ativos</h2><span class="sub">Dispositivos e atividade</span>
-          <span style="margin-left:auto" class="row">
-            <span class="tiny mut" id="upd">-</span>
-            <a class="tiny" id="loglink" href="/pxe/servidorpxe.log" target="_blank">log (arquivo de texto)</a>
-          </span>
-        </header>
-        <div class="body">
-          <div class="grid2">
-            <div><h3 class="h3" style="margin-bottom:8px">Boot</h3><div class="scroll" id="boots"></div></div>
-            <div><h3 class="h3" style="margin-bottom:8px">DHCP</h3><div class="scroll" id="dhcp"></div></div>
-          </div>
-          <h3 class="h3" style="margin:16px 0 8px">TFTP</h3><div class="scroll" id="tftp"></div>
-        </div>
-      </div>
-      <div class="card">
-        <header><h2>Dispositivos</h2><span class="sub" id="devcount">-</span></header>
-        <div class="body">
-          <h3 class="h3" style="margin-bottom:8px">Vistos agora (ultimos 20 minutos)</h3>
-          <div class="hosts" id="hosts"><div class="empty">nenhum host visto ainda</div></div>
-        </div>
-      </div>
-      <div class="card">
-        <header><h2>Cadastrar equipamento</h2><span class="sub">o MAC vira a chave de autorizacao</span></header>
-        <div class="body">
-          <div class="grid2">
-            <label class="f"><span>MAC do equipamento</span>
-              <input type="text" id="dmac" placeholder="AA:BB:CC:DD:EE:FF" autocomplete="off"></label>
-            <label class="f"><span>Perfil de instalacao</span><select id="dprof"></select></label>
-            <label class="f"><span>O que fazer no boot</span><select id="dact">
-              <option value="Boot">Iniciar direto</option>
-              <option value="Deny">Negado</option></select></label>
-            <label class="f"><span>Modelo (opcional, para OUI)</span>
-              <input type="text" id="dmodel" placeholder="ex.: PC Engines APU" autocomplete="off"></label>
-            <label class="f" style="grid-column:1/-1"><span>Observacao (opcional)</span>
-              <input type="text" id="dnote" placeholder="ex.: notebook do financeiro" autocomplete="off"></label>
-          </div>
-          <div class="row"><button class="p" onclick="addDev()">Cadastrar</button>
-            <span class="mut tiny">No modo <b>Todos os equipamentos</b> o cadastro nao e obrigatorio.</span></div>
-        </div>
-      </div>
-      <div class="card">
-        <header><h2>Cadastrados</h2></header>
-        <div class="body"><div class="scroll" id="devsWrap"></div></div>
-      </div>
-      <div class="nav"><span></span><button class="p" onclick="showStep(2)">Proximo: Midia (ISO)</button></div>
-    </section>
-
-    <!-- ================= PASSO 2: MIDIA ================= -->
-    <section class="step" data-step="2" hidden>
       <div class="card">
         <header><h2>2. Midia (ISO)</h2><span class="sub" id="mediachip">-</span></header>
         <div class="body">
@@ -835,8 +828,63 @@ td.wrap{white-space:normal;max-width:320px}
         <header><h2>Midias publicadas</h2><span class="sub">pastas geradas em www\_dorpxe\media</span></header>
         <div class="body"><div class="list" id="medias"></div></div>
       </div>
-      <div class="nav"><button class="g" onclick="showStep(1)">Voltar: Ativos</button><span></span></div>
+      <div class="nav"><span></span><button class="p" onclick="showStep(2)">Proximo: Ativos</button></div>
     </section>
+
+    <!-- ================= ATIVOS (passo 3 do fluxo) ================= -->
+    <section class="step" data-step="2" hidden>
+      <div class="card">
+        <header><h2>3. Ativos</h2><span class="sub">Dispositivos e atividade</span>
+          <span style="margin-left:auto" class="row">
+            <span class="tiny mut" id="upd">-</span>
+            <a class="tiny" id="loglink" href="/pxe/servidorpxe.log" target="_blank">log (arquivo de texto)</a>
+          </span>
+        </header>
+        <div class="body">
+          <div class="grid2">
+            <div><h3 class="h3" style="margin-bottom:8px">Boot</h3><div class="scroll" id="boots"></div></div>
+            <div><h3 class="h3" style="margin-bottom:8px">DHCP</h3><div class="scroll" id="dhcp"></div></div>
+          </div>
+          <h3 class="h3" style="margin:16px 0 8px">TFTP</h3><div class="scroll" id="tftp"></div>
+        </div>
+      </div>
+      <div class="card">
+        <header><h2>Transferencia em andamento</h2><span class="sub">por ativo conectado</span></header>
+        <div class="body"><div id="xfer"><div class="empty">nenhuma transferencia TFTP em andamento</div></div></div>
+      </div>
+      <div class="card">
+        <header><h2>Dispositivos</h2><span class="sub" id="devcount">-</span></header>
+        <div class="body">
+          <h3 class="h3" style="margin-bottom:8px">Vistos agora (ultimos 20 minutos)</h3>
+          <div class="hosts" id="hosts"><div class="empty">nenhum host visto ainda</div></div>
+        </div>
+      </div>
+      <div class="card">
+        <header><h2>Cadastrar equipamento</h2><span class="sub">o MAC vira a chave de autorizacao</span></header>
+        <div class="body">
+          <div class="grid2">
+            <label class="f"><span>MAC do equipamento</span>
+              <input type="text" id="dmac" placeholder="AA:BB:CC:DD:EE:FF" autocomplete="off"></label>
+            <label class="f"><span>Perfil de instalacao</span><select id="dprof"></select></label>
+            <label class="f"><span>O que fazer no boot</span><select id="dact">
+              <option value="Boot">Iniciar direto</option>
+              <option value="Deny">Negado</option></select></label>
+            <label class="f"><span>Modelo (opcional, para OUI)</span>
+              <input type="text" id="dmodel" placeholder="ex.: PC Engines APU" autocomplete="off"></label>
+            <label class="f" style="grid-column:1/-1"><span>Observacao (opcional)</span>
+              <input type="text" id="dnote" placeholder="ex.: notebook do financeiro" autocomplete="off"></label>
+          </div>
+          <div class="row"><button class="p" onclick="addDev()">Cadastrar</button>
+            <span class="mut tiny">No modo <b>Todos os equipamentos</b> o cadastro nao e obrigatorio.</span></div>
+        </div>
+      </div>
+      <div class="card">
+        <header><h2>Cadastrados</h2></header>
+        <div class="body"><div class="scroll" id="devsWrap"></div></div>
+      </div>
+      <div class="nav"><button class="g" onclick="showStep(1)">Voltar: Midia (ISO)</button><span></span></div>
+    </section>
+
   </main>
 </div>
 <div id="toast"></div>
@@ -875,9 +923,11 @@ function showStep(n){n=Math.min(2,Math.max(1,+n||1));localStorage.setItem('dorpx
   [].forEach.call(document.querySelectorAll('.stepbtn'),function(b){b.setAttribute('aria-current',b.getAttribute('data-go')===String(n)?'true':'false')});
   window.scrollTo({top:0,behavior:'smooth'});location.hash='p'+n}
 function stepDone(n,d){
+  // n=1 (numero 2 do fluxo) e Midia; n=2 (numero 3) e Ativos. O passo 1 do
+  // fluxo (Politica de boot) fica na barra superior e nao tem botao.
   if(!d)return false;
-  if(n===1){return !!(d.components&&d.components.http)&&((d.devices||[]).length>0||(d.policy&&d.policy.Mode==='Open'));}
-  if(n===2){var m=d.mediaCfg||{};var md=d.media||[];return md.length>0&&md.every(function(x){return x.BootWim;});}
+  if(n===1){var m=d.mediaCfg||{};var md=d.media||[];return md.length>0&&md.every(function(x){return x.BootWim;});}
+  if(n===2){return !!(d.components&&d.components.http)&&((d.devices||[]).length>0||(d.policy&&d.policy.Mode==='Open'));}
   return false;
 }
 function midState(d){
@@ -1011,21 +1061,41 @@ function devices(d){
   var cur=sel.value,html=names.map(function(n){return '<option>'+esc(n)+'</option>'}).join('');
   if(sel.innerHTML!==html){sel.innerHTML=html;if(names.indexOf(cur)>=0)sel.value=cur}
 }
-function events(d){
-  var e=d.events||{};
-  document.getElementById('boots').innerHTML=tbl(
-    [['Hora',function(r){return hhmm(r.At)}],['MAC',function(r){return r.Mac}],['IP',function(r){return r.Ip}],
-     ['Decisao',function(r){return r.Action+(r.Reason?' ('+r.Reason+')':'')},true]],
-    (e.boots||[]).slice().reverse(),'nenhum boot atendido');
-  document.getElementById('dhcp').innerHTML=tbl(
-    [['Hora',function(r){return hhmm(r.At)}],['MAC',function(r){return r.Mac}],['Tipo',function(r){return r.Type}],
-     ['Boot file',function(r){return r.BootFile||'-'},true]],
-    (e.dhcp||[]).slice().reverse(),'nenhum evento DHCP');
-  document.getElementById('tftp').innerHTML=tbl(
-    [['Hora',function(r){return hhmm(r.At)}],['IP',function(r){return r.Ip}],['Arquivo',function(r){return r.File},true],
-     ['Bytes',function(r){return bytes(r.Bytes)}]],
-    (e.tftp||[]).slice().reverse(),'nenhum evento TFTP');
-}
+  function events(d){
+    var e=d.events||{};
+    document.getElementById('boots').innerHTML=tbl(
+      [['Hora',function(r){return hhmm(r.At)}],['MAC',function(r){return r.Mac}],['IP',function(r){return r.Ip}],
+       ['Decisao',function(r){return r.Action+(r.Reason?' ('+r.Reason+')':'')},true]],
+      (e.boots||[]).slice().reverse(),'nenhum boot atendido');
+    document.getElementById('dhcp').innerHTML=tbl(
+      [['Hora',function(r){return hhmm(r.At)}],['MAC',function(r){return r.Mac}],['Tipo',function(r){return r.Type}],
+       ['Boot file',function(r){return r.BootFile||'-'},true]],
+      (e.dhcp||[]).slice().reverse(),'nenhum evento DHCP');
+    document.getElementById('tftp').innerHTML=tbl(
+      [['Hora',function(r){return hhmm(r.At)}],['IP',function(r){return r.Ip}],['Arquivo',function(r){return r.File},true],
+       ['Bytes',function(r){return bytes(r.Bytes)}]],
+      (e.tftp||[]).slice().reverse(),'nenhum evento TFTP');
+    xfer(d);
+  }
+  // Progresso por ativo. Mede so a fase TFTP do WinPE (wimboot + boot.wim +
+  // BCD/sdi/fonte). O install.wim vem pelo share SMB direto para o cliente,
+  // sem passar pelo servidor, entao NAO entra nesta conta.
+  function xfer(d){
+    var box=document.getElementById('xfer');
+    if(!box)return;
+    var tot=+(d.bootPayloadBytes||0),a=(d.ativos||[]).filter(function(x){return x.Active||x.Pct>0});
+    if(!a.length){box.innerHTML='<div class="empty">nenhuma transferencia TFTP em andamento</div>';return}
+    a.sort(function(x,y){return (y.Pct||0)-(x.Pct||0)});
+    box.innerHTML='<div class="xh">Fase WinPE via TFTP'+(tot?' - payload de <b>'+esc(bytes(tot))+'</b> por cliente':'')+
+      '<span class="mut tiny">o install.wim vem pelo share SMB e nao e medido aqui</span></div>'+
+      a.map(function(x){
+        var pc=Math.max(0,Math.min(100,+(x.Pct||0)));
+        return '<div class="xrow"><div class="xhdr"><span class="mono">'+esc(x.Mac||x.Ip||'?')+'</span>'+
+          '<span class="mut tiny">'+esc(x.Ip||'')+'</span>'+
+          '<b class="xpct">'+pc.toFixed(1).replace('.',',')+'%</b>'+
+          '<span class="mut tiny">'+esc(bytes(x.Bytes||0))+'</span></div>'+
+          '<div class="xbar"><i style="width:'+pc+'%"></i></div></div>'}).join('');
+  }
 function render(d){D=d;head(d);media(d);envlist(d);policy(d);devices(d);events(d)}
 function load(manual){
   return api('/pxe/api/status').then(function(d){
