@@ -1,0 +1,42 @@
+# ==========================================================================
+#  DorPXE - normalizacao de linha de ponta e de atributos
+#  Projeto 100% Windows: tudo versionado com CRLF.
+# ==========================================================================
+
+# Padrao: detecta texto automaticamente e normaliza para CRLF no checkout
+* text=auto eol=crlf
+
+# --- Codigo ---------------------------------------------------------------
+*.ps1   text eol=crlf
+*.psd1  text eol=crlf
+*.psm1  text eol=crlf
+*.bat   text eol=crlf
+*.cmd   text eol=crlf
+*.js    text eol=crlf
+*.css   text eol=crlf
+*.html  text eol=crlf
+
+# --- Scripts iPXE (CRLF e o formato mais seguro para o firmware) ----------
+*.ipxe  text eol=crlf
+
+# --- Documentacao ---------------------------------------------------------
+*.md    text eol=crlf
+*.txt   text eol=crlf
+
+# --- Log: nunca converter linha de ponta, o arquivo ja e gerado cru ------
+*.log   -text
+
+# --- Binarios: nunca tentar diff nem conversao de linha -------------------
+# iPXE e wimboot sao essenciais e versionados de proposito (~3,6 MB).
+*.efi   binary
+*.kpxe  binary
+*.bin   binary
+*.rom   binary
+*.wim   binary
+*.iso   binary
+*.png   binary
+*.jpg   binary
+*.zip   binary
+
+# Sem compressao adicional: o GitHub ja compacta o proprio repositorio.
+# Nao usar -diff em codigo: o macro "binary" acima ja cobre so os binarios.

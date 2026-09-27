@@ -1,0 +1,42 @@
+# ==========================================================================
+#  DorPXE - EditorConfig
+#  Padrao do projeto: Windows, PowerShell 5.1, CRLF, UTF-8, 4 espacos.
+# ==========================================================================
+
+root = true
+
+[*]
+charset = utf-8
+end_of_line = crlf
+insert_final_newline = true
+trim_trailing_whitespace = true
+indent_style = space
+indent_size = 4
+
+[*.{ps1,psm1,psd1}]
+indent_size = 4
+
+[*.{js,css,html}]
+indent_size = 4
+
+[*.bat]
+indent_size = 4
+
+[*.{md,markdown}]
+# Markdown: dois espacos no final = quebra de linha forcada.
+trim_trailing_whitespace = false
+
+[*.{yml,yaml,json}]
+indent_size = 2
+
+[*.{ipxe}]
+indent_size = 4
+
+# Arquivos gerados / binarios: nao ha como(normalizar) nada neles.
+[*.log]
+insert_final_newline = false
+trim_trailing_whitespace = false
+
+[*.{efi,kpxe,bin,rom,wim,iso,png,jpg,zip}]
+insert_final_newline = false
+trim_trailing_whitespace = false

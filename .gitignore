@@ -1,0 +1,117 @@
+# ==========================================================================
+#  ServidorPXE - arquivos que NAO entram no controle de versao
+#  Regra: versionamos codigo (.ps1/.bat), documentacao e os binarios do iPXE
+#  (~3,6 MB, necessarios para o projeto funcionar offline).
+#  Tudo que for estado de execucao, segredo ou arquivo gerado fica de fora.
+# ==========================================================================
+
+# --- Sistema operacional / telas ------------------------------------------
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+*.lnk
+
+# --- Editores e IDEs ------------------------------------------------------
+.vs/
+.vscode/
+.idea/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+*.DotSettings.user
+*.swp
+*.swo
+*~
+*.bak
+*.orig
+*.rej
+*.tmp
+
+# --- Build / geradores ----------------------------------------------------
+[Bb]in/
+[Oo]bj/
+[Dd]ebug/
+[Rr]elease/
+artifacts/
+node_modules/
+
+# --- macOS / Linux --------------------------------------------------------
+.DS_Store
+__MACOSX/
+._*
+.AppleDouble
+.LSOverride
+
+# ==========================================================================
+#  SEGREDOS E ESTADO DE EXECUCAO - nunca versionar
+# ==========================================================================
+state/
+logs/
+*.log
+
+# Segredos gerados em tempo de execucao
+state/admin-token.txt
+state/session-secret.txt
+*.pfx
+*.pem
+*.key
+*.cer
+*.snk
+
+# Configuracao local / override por maquina
+config/*.local.psd1
+config/*.local.json
+config/*.override.psd1
+.env
+.env.*
+*.env
+
+# ATENCAO: config/ServidorPXE.config.psd1 EH versionado de proposito (so valores
+# padrao, sem segredo). Se voce preencher ProductKey, Profiles[].UserPassword
+# ou Media.SetupPassword nele, NAO faca commit. Veja o aviso no topo do
+# proprio arquivo - o console reescreve esse aviso a cada salvamento.
+
+# ==========================================================================
+#  ARQUIVOS GERADOS EM TEMPO DE EXECUCAO
+# ==========================================================================
+
+# Script iPXE de 2o estagio: contem o IP desta maquina.
+# Gerado por lib\Media.ps1 (Write-DorPXEAutoExec) a cada start.
+**/autoexec.ipxe
+
+# Build PXE: wim, BCD, initrd, midia extraida
+www/pxe/
+www/winpe/
+www/_dorpxe/
+
+# Midia do Windows nunca entra no repo: uma ISO tem gigabytes e o conteudo e da
+# Microsoft. Build-Media extrai da sua propria ISO em tempo de execucao.
+# Estas regras valem em qualquer pasta, inclusive na raiz do projeto.
+*.iso
+*.wim
+*.swm
+*.esd
+*.dda
+*.wimlib
+BCD
+
+# ==========================================================================
+#  BINARIOS QUE DEVEM SER VERSIONADOS
+#  Sao ~3,6 MB e sao necessarios para o projeto funcionar offline:
+#  o ServidorPXE nao baixa iPXE automaticamente.
+# ==========================================================================
+!www/ipxe/version.txt
+!www/ipxe/*/ipxe.efi
+!www/ipxe/*/undionly.kpxe
+!www/ipxe/wimboot/*/wimboot
+
+# --- Temporarios de upload/download (Drive, navegadores) -----------------
+.tmp.drivedownload/
+.tmp.driveupload/
+*.crdownload
+*.part
+
+# --- Git ------------------------------------------------------------------
+.git/
