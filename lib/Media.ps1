@@ -219,8 +219,8 @@ function New-DorPXEUnattendXml {
       $drivePaths
       <UserData>
         <AcceptEula>true</AcceptEula>
-        <FullName>DorPXE</FullName>
-        <Organization>DorPXE</Organization>
+        <FullName>ServidorPXE</FullName>
+        <Organization>ServidorPXE</Organization>
       </UserData>
       $dyn
       $keyXml
@@ -237,7 +237,7 @@ function New-DorPXEUnattendXml {
     <component name="Microsoft-Windows-Shell-Setup" processorArchitecture="$arch" publicKeyToken="31bf3856ad364e35" language="neutral" versionScope="nonSxS" xmlns:wcm="http://schemas.microsoft.com/WMIConfig/2002/State" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
       $oobe
       <UserAccounts><LocalAccounts>$account</LocalAccounts></UserAccounts>
-      <RegisteredOrganization>DorPXE</RegisteredOrganization>
+      <RegisteredOrganization>ServidorPXE</RegisteredOrganization>
     </component>
   </settings>
 </unattend>
@@ -264,7 +264,7 @@ function New-DorPXEStartNetCmd {
     $setup = "$media\sources\setup.exe"
     $lines = @(
         '@echo off',
-        'title DorPXE - instalando ' + $Profile.Title,
+        'title ServidorPXE - instalando ' + $Profile.Title,
         'wpeinit',
         'echo.',
         'echo [ServidorPXE] perfil : ' + $Profile.Title,
@@ -532,7 +532,7 @@ function Build-DorPXEMedia {
     }
     $unc = Get-DorPXEShareUnc -Config $Config
     $info = @(
-        'DorPXE ' + (Get-DorPXEVersion),
+        'ServidorPXE ' + (Get-DorPXEVersion),
         'compartilhamento : ' + $unc,
         'midia           : ' + "$unc\media\$slug\sources",
         'perfis          : ' + (($profiles | ForEach-Object { "$($_.Name) -> $unc\profiles\$($_.Name)\autounattend.xml" }) -join '; '),

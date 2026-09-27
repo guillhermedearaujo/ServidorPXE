@@ -1,4 +1,4 @@
-# DorPXE 1.0.0 - configuracao (edite a mao, recarregue com -Verb Start)
+# ServidorPXE 1.0.0 - configuracao (edite a mao, recarregue com -Verb Start)
 #
 # ATENCAO - SEGREDOS: ProductKey, Profiles[].UserPassword e Media.SetupPassword
 # entram NESTA imagem. Nao versione esta imagem em repositorio publico.
@@ -51,7 +51,7 @@
         Models = @()
         DefaultAction = 'Local'
         MenuSeconds = 30
-        MessageDenied = 'DorPXE: este equipamento nao esta autorizado para boot via rede.'
+        MessageDenied = 'ServidorPXE: este equipamento nao esta autorizado para boot via rede.'
     }
     Log = @{
         Level = 'Info'

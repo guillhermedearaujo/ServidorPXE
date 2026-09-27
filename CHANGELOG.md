@@ -88,6 +88,51 @@ e o versionamento segue [SemVer](https://semver.org/lang/pt-BR/).
   para dropdowns.
 - Interpolacao `${...}` do JavaScript dentro do here-string do PowerShell
   corrompia o script do console.
+- **Linha de `boot.i386.wim` duplicada no `boot.ipxe`.** O gerador iterava os
+  modos prontos (`uefi` e `bios`) e emitia uma linha por par modo x extra. Como a
+  URL usa `${mode}` (variavel do iPXE, nao do servidor), o que importa e o
+  conjunto de arquiteturas extras: com os dois modos prontos a mesma linha saia
+  duas vezes. Agora os extras sao deduplicados por arquivo e ordenados.
+- **Nome antigo sobrevivia em textos que o usuario e o cliente veem.** O
+  primeiro renome cobriu arquivos, log, share e titulos do console, mas deixou
+  o cabecalho do `boot.ipxe`, o menu de boot, a tela de acesso negado, o titulo
+  do Windows Setup e o `FullName`/`Organization` do `autounattend.xml` (esses
+  dois viram o "proprietario registrado" do Windows instalado).
+- **Nome de servico divergente no `sc.exe`.** `sc.exe description` e
+  `sc.exe failure` ainda apontavam para `DorPXE`, que nao existe depois do
+  renome: a configuracao de recuperacao automatica nao era aplicada. Alinhados
+  com o servico criado (`ServidorPXE`).
+- **Share padrao do `New-DorPXEConfig` continuava `DorPXE`.** O arquivo de
+  configuracao foi corrigido, mas um `Init` regravaria o padrao antigo por
+  cima. Corrigido no gerador e no arquivo.
+- **Diagnostico de firewall cego.** Duas verificacoes procuravam regras
+  `DorPXE*` (`lib\Admin.ps1` e `lib\Common.ps1`) enquanto o instalador criava
+  `DorPXE-HTTP/TFTP/DHCP`; apos o renome das regras, nenhuma das duas bateria
+  acharia as regras. Passaram a usar `ServidorPXE*`, o mesmo prefixo do
+  instalador.
+- Prefixo do log diario inconsistente: gravava `logs\dorpxe-AAAAMMDD.log` e o
+  console lia `dorpxe-*.log`. Agora `servidorpxe-*` nos dois lados, com o README
+  atualizado.
+- `MessageDenied` do `config\ServidorPXE.config.psd1` (o arquivo carregado em
+  runtime) ainda dizia `DorPXE:`; so o default em `lib\Common.ps1` havia sido
+  corrigido.
+- Nome da tarefa agendada, do atalho do Menu Iniciar e das regras de firewall
+  coerentes com `ServidorPXE`.
+
+### Testes
+- 182 checks (antes: 171). Novos checks de regressao:
+  - extras sem duplicar e nenhuma linha repetida no `boot.ipxe`;
+  - firewall criado pelo instalador casa com o procurado no diagnostico;
+  - `sc.exe` aponta para o servico `ServidorPXE`;
+  - share padrao e share do config iguais a `ServidorPXE`;
+  - `MessageDenied` do config igual ao do gerador;
+  - prefixo do log arquiado igual na escrita e na leitura;
+  - nenhum nome antigo visivel em codigo/config (case sensivel, com allowlist
+    dos identificadores internos `Get-DorPXE*`, `X-DorPXE-Token`,
+    `dorpxe_session`, `www\_dorpxe`, `DORPXE_SKIP_*`);
+  - README documenta o caminho do log diario atual.
+- `PXE_DUMP_BOOT=1 ServidorPXE.ps1 Test` imprime o `boot.ipxe` gerado, que e o
+  arquivo exato que o cliente recebe.
 
 ## [1.0.0] - 2026-09-26
 

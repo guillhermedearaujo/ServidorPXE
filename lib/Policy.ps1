@@ -253,7 +253,7 @@ function Get-DorPXEAutoExecScript {
     $suffix = if ($port -eq 80) { '' } else { ":$port" }
     @(
         '#!ipxe',
-        '# DorPXE - 2o estagio. Este script e buscado pelo proprio iPXE via TFTP',
+        '# ServidorPXE - 2o estagio. Este script e buscado pelo proprio iPXE via TFTP',
         '# (o arquivo "autoexec.ipxe") ou pelo boot file devolvido no DHCP.',
         'isset ${next-server} && set pxe ${next-server} || set pxe ' + $ip,
         'isset ${net0/mac} && set mymac ${net0/mac} || set mymac 00:00:00:00:00:00',
@@ -269,7 +269,7 @@ function Get-DorPXEDenyScript {
     $msg = ($msg -replace '[^\x20-\x7E]', '')
     @(
         '#!ipxe',
-        '# DorPXE - acesso negado',
+        '# ServidorPXE - acesso negado',
         'echo ---------------------------------------------',
         'echo ' + $msg,
         ('echo MAC: {0}   IP: {1}' -f $Decision.Mac, $Decision.Ip),
@@ -330,7 +330,7 @@ function Get-DorPXEBootScript {
     if ($ready.Count -eq 0) {
         $lines = New-Object System.Collections.Generic.List[string]
         $lines.Add('#!ipxe')
-        $lines.Add('# DorPXE ' + (Get-DorPXEVersion) + ' - perfil ainda nao publicado')
+        $lines.Add('# ServidorPXE ' + (Get-DorPXEVersion) + ' - perfil ainda nao publicado')
         $lines.Add('echo [ServidorPXE] O perfil ' + $Profile.Name + ' ainda nao tem WinPE publicado.')
         $lines.Add('echo [ServidorPXE] No servidor: .\ServidorPXE.ps1 Build-Media -Iso "...\Win11.iso"')
         $lines.Add('echo [ServidorPXE] MAC: ' + $(if ($Decision) { $Decision.Mac } else { '?' }))
@@ -341,7 +341,7 @@ function Get-DorPXEBootScript {
     }
     $lines = New-Object System.Collections.Generic.List[string]
     $lines.Add('#!ipxe')
-    $lines.Add('# DorPXE ' + (Get-DorPXEVersion) + ' - perfil: ' + $Profile.Name)
+    $lines.Add('# ServidorPXE ' + (Get-DorPXEVersion) + ' - perfil: ' + $Profile.Name)
     if ($Decision) {
         $lines.Add(('# MAC {0} | modelo {1} | perfil {2} | origem {3}' -f `
                     $Decision.Mac, $(if ($Decision.Model) { $Decision.Model } else { '?' }), $Profile.Name, $Decision.Source))
@@ -368,13 +368,22 @@ function Get-DorPXEBootScript {
     }
     # boot.wim canonico (x86_64) em boot.wim; arquiteturas extras em boot.<arch>.wim.
     # o iPXE escolhe pelo ${arch} do cliente, sem pedir arquivo extra ao servidor.
+    # A URL usa ${mode} (variavel do iPXE), nao o modo do servidor: portanto o que
+    # importa e o conjunto de architectures extras, nao quantos modos estao
+    # prontos. Deduplicar por arquivo evita emitir a mesma linha N vezes (uma por
+    # modo pronto) e evita referenciar um extra que so foi publicado em um modo.
     $purl = '${base}/winpe/profiles/' + $Profile.Name + '/${mode}'
     $lines.Add('set wim ' + $purl + '/boot.wim')
+    $extras = @{}
     foreach ($mode2 in $ready) {
         foreach ($x in @($state[$mode2].Extras)) {
-            if (-not $x -or -not $x.Arch) { continue }
-            $lines.Add("isset `${arch} && match `${arch} $($x.Arch)* && set wim $purl/$($x.File) || true")
+            if (-not $x -or -not $x.Arch -or -not $x.File) { continue }
+            $extras[$x.File] = $x.Arch
         }
+    }
+    foreach ($file in ($extras.Keys | Sort-Object)) {
+        $archName = $extras[$file]
+        $lines.Add("isset `${arch} && match `${arch} $archName* && set wim $purl/$file || true")
     }
     $lines.Add('initrd --name boot.wim ${wim} boot.wim')
     $lines.Add('imgstat')
@@ -402,7 +411,7 @@ function Get-DorPXEMenuScript {
     if ($timeout -gt 600) { $timeout = 600 }
     $lines = New-Object System.Collections.Generic.List[string]
     $lines.Add('#!ipxe')
-    $lines.Add('# DorPXE ' + (Get-DorPXEVersion) + ' - menu de instalacao')
+    $lines.Add('# ServidorPXE ' + (Get-DorPXEVersion) + ' - menu de instalacao')
     $lines.Add('set base ' + $base)
     if ($Decision) {
         $lines.Add(('# MAC {0} | modelo {1} | origem {2}' -f `
@@ -410,7 +419,7 @@ function Get-DorPXEMenuScript {
     }
     $lines.Add('echo.')
     $lines.Add('echo  ============================================================')
-    $lines.Add('echo     DorPXE - escolha o perfil de instalacao')
+    $lines.Add('echo     ServidorPXE - escolha o perfil de instalacao')
     $lines.Add('echo  ============================================================')
     $i = 1
     $lines.Add('item local exit')

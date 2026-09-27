@@ -1,9 +1,9 @@
 @echo off
 setlocal EnableExtensions
 rem ============================================================================
-rem  DorPXE - iniciar.bat
+rem  ServidorPXE - iniciar.bat
 rem  Console de operacao. Deve ser executado como Administrador (elevacao
-rem  automatica). DorPXE precisa de admin para UDP/67, UDP/69, firewall,
+rem  automatica). ServidorPXE precisa de admin para UDP/67, UDP/69, firewall,
 rem  URLACL e share SMB.
 rem
 rem  Este script se prepara para rodar em qualquer estacao corporativa:
@@ -82,7 +82,7 @@ if not "%~1"==""          goto uso
 cls
 echo.
 echo  =====================================================
-echo    DorPXE  -  console de operacao   (porta %PORT%)
+echo    ServidorPXE  -  console de operacao   (porta %PORT%)
 echo  =====================================================
 echo.
 echo   1) Iniciar em segundo plano ^(recomendado^)

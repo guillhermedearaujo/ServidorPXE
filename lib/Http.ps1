@@ -179,7 +179,7 @@ function Get-DorPXEHealthText {
     param($Job)
     $State = $Job.State
     $lines = New-Object System.Collections.Generic.List[string]
-    $lines.Add('DorPXE ' + (Get-DorPXEVersion) + ' - OK')
+    $lines.Add('ServidorPXE ' + (Get-DorPXEVersion) + ' - OK')
     $lines.Add('server   : ' + $Job.ServerName + ' (' + $Job.ServerAddress + ')')
     $lines.Add('uptime   : ' + ((Get-Date) - $State.StartTime).ToString('hh\:mm\:ss'))
     $dhcpOn = if ($Job.Components) { $Job.Components.Dhcp } else { $Job.Config.Dhcp.Enabled }

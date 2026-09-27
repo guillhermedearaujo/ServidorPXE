@@ -381,7 +381,7 @@ logs/                   log diario
 | Arquivo | Conteudo |
 | --- | --- |
 | `servidorpxe.log` | Log da instancia em execucao, UTF-8 **com BOM** (acentos corretos) |
-| `logs\dorpxe-AAAAMMDD.log` | Log diario, rotacionado por `Log.KeepDays` (30) |
+| `logs\servidorpxe-AAAAMMDD.log` | Log diario, rotacionado por `Log.KeepDays` (30) |
 | `logs\service.out.log` / `service.err.log` | Saida do servico instalado |
 | `state\status.json` | Estado consumivel por automacao |
 

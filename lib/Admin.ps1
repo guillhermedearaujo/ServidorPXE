@@ -135,7 +135,7 @@ function Get-DorPXEEnvironmentReport {
     # 7) firewall (consulta cara, cacheada)
     $fw = Get-DorPXECachedValue -Key 'fw' -Seconds 180 -Block {
         $port = [int]$Config.Server.HttpPort
-        $has = @(Get-NetFirewallRule -DisplayName 'DorPXE*' -ErrorAction SilentlyContinue |
+        $has = @(Get-NetFirewallRule -DisplayName 'ServidorPXE*' -ErrorAction SilentlyContinue |
             Where-Object { $_.Enabled -eq 'True' -and $_.Direction -eq 'Inbound' } |
             Get-NetFirewallPortFilter -ErrorAction SilentlyContinue |
             Where-Object { $_.LocalPort -eq [string]$port }).Count
@@ -333,7 +333,7 @@ function Get-DorPXEAdminLogTail {
     # log ativo: arquivo de texto na raiz do projeto
     $file = (Get-DorPXEPath).LogFile
     if (-not (Test-Path -LiteralPath $file -PathType Leaf)) {
-        $alt = @(Get-ChildItem -Path (Join-Path (Get-DorPXEPath).Logs 'dorpxe-*.log') -ErrorAction SilentlyContinue | Sort-Object LastWriteTime)
+        $alt = @(Get-ChildItem -Path (Join-Path (Get-DorPXEPath).Logs 'servidorpxe-*.log') -ErrorAction SilentlyContinue | Sort-Object LastWriteTime)
         if ($alt.Count -eq 0) { return @() }
         $file = $alt[-1].FullName
     }
@@ -457,7 +457,7 @@ function Get-DorPXEAdminLoginHtml {
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="color-scheme" content="dark light">
-<title>DorPXE - acesso restrito</title>
+<title>ServidorPXE - acesso restrito</title>
 <style>
 :root{--bg:#0b0f14;--card:#131b24;--card2:#18222e;--line:#22303d;--fg:#e6edf3;--dim:#8fa3b5;--acc:#3b82f6;--r:14px}
 @media (prefers-color-scheme:light){:root{--bg:#f4f7fb;--card:#fff;--card2:#f7fafd;--line:#d8e2ec;--fg:#0f1b28;--dim:#5b6b7c}}
@@ -487,7 +487,7 @@ button:disabled{opacity:.6;cursor:progress}
 </head>
 <body><form class="box" id="lf" autocomplete="off">
   <div class="mark">DP</div>
-  <h1>DorPXE - console protegido</h1>
+  <h1>ServidorPXE - console protegido</h1>
   <p class="err" id="err">$msg</p>
   <label for="u">Usuario (local ou dominio)</label>
   <input type="text" id="u" name="username" placeholder="usuario" autocomplete="username" autofocus>
@@ -822,7 +822,7 @@ td.wrap{white-space:normal;max-width:320px}
         <header><h2>2. Midia (ISO)</h2><span class="sub" id="mediachip">-</span></header>
         <div class="body">
           <p class="mut" style="margin:0 0 14px">Informe a <b>pasta</b> que contem a imagem <code class="mono">.iso</code> do Windows 11
-             (por exemplo <code class="mono">D:\ISOs</code>). O DorPXE monta a ISO, extrai o WinPE e publica o share de rede.</p>
+             (por exemplo <code class="mono">D:\ISOs</code>). O ServidorPXE monta a ISO, extrai o WinPE e publica o share de rede.</p>
           <div class="grid2">
             <label class="f"><span>Pasta da ISO</span>
               <input type="text" id="midir" placeholder="D:\ISOs" autocomplete="off" oninput="markDirty('dir')"></label>
@@ -844,7 +844,7 @@ td.wrap{white-space:normal;max-width:320px}
         <header><h2>Diagnostico do ambiente</h2><span class="sub" id="envchip">-</span></header>
         <div class="body">
           <p class="mut tiny" style="margin:0 0 10px">Verificacao automatica do que o boot por rede precisa.
-             Rodar em rede corporativa (com outro DHCP no ar) e permitido: o DorPXE entra como <b>proxy DHCP</b>.</p>
+             Rodar em rede corporativa (com outro DHCP no ar) e permitido: o ServidorPXE entra como <b>proxy DHCP</b>.</p>
           <div class="list" id="envlist"><div class="empty">consultando...</div></div>
         </div>
       </div>
@@ -1107,7 +1107,7 @@ function rmDev(mac){
   post('/pxe/api/device.remove',{mac:mac}).then(function(d){render(d);toast('Removido')}).catch(function(e){toast(e.message,true)});
 }
 function ctl(a){
-    if(!confirm('Reiniciar o servidor DorPXE? O console fica indisponivel por alguns segundos.'))return;
+    if(!confirm('Reiniciar o servidor ServidorPXE? O console fica indisponivel por alguns segundos.'))return;
     post('/pxe/api/service.'+a,{}).then(function(r){
       document.getElementById('ctlmsg').textContent=r.message;toast(r.message);
       setTimeout(function(){load()},4000)}).catch(function(e){toast(e.message,true)});

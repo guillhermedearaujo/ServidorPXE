@@ -77,7 +77,7 @@ function Start-DorPXEStatusWriter {
 function Stop-DorPXEService {
     param($Job)
     if (-not $Job) { return }
-    Write-DorPXELog 'DorPXE: encerrando...' -Level Info -Component core
+    Write-DorPXELog 'ServidorPXE: encerrando...' -Level Info -Component core
     $errs = New-Object System.Collections.ArrayList
     # 1) cancela: os loops de accept (HTTP) e de socket (DHCP/TFTP) observam o token
     #    e saem em menos de 1s, fechando listener e sockets.
@@ -94,8 +94,8 @@ function Stop-DorPXEService {
     if ($script:Mutex) { try { $script:Mutex.ReleaseMutex() } catch { [void]$errs.Add("mutex: $($_.Exception.Message)") } }
     $sf = Join-Path (Get-DorPXEPath).State 'status.json'
     if (Test-Path -LiteralPath $sf) { try { Remove-Item -LiteralPath $sf -Force -ErrorAction SilentlyContinue } catch { } }
-    if ($errs.Count -gt 0) { Write-DorPXELog ('DorPXE: avisos ao encerrar: ' + ($errs -join ' | ')) -Level Warn -Component core }
-    Write-DorPXELog 'DorPXE: encerrado.' -Level Info -Component core
+    if ($errs.Count -gt 0) { Write-DorPXELog ('ServidorPXE: avisos ao encerrar: ' + ($errs -join ' | ')) -Level Warn -Component core }
+    Write-DorPXELog 'ServidorPXE: encerrado.' -Level Info -Component core
 }
 
 # Encerra a instancia registrada em state\status.json (outro processo).
@@ -121,7 +121,7 @@ function Stop-DorPXERunningInstance {
         return @{ Stopped = $false; Pid = $st.pid; Message = "ATENCAO: o PID $($st.pid) continua ativo apos o pedido de parada." }
     }
     Remove-Item -LiteralPath $f -Force -ErrorAction SilentlyContinue
-    return @{ Stopped = $true; Pid = $st.pid; Message = "DorPXE (PID $($st.pid)) encerrado." }
+    return @{ Stopped = $true; Pid = $st.pid; Message = "ServidorPXE (PID $($st.pid)) encerrado." }
 }
 
 function Start-DorPXEService {
@@ -151,7 +151,7 @@ function Start-DorPXEService {
     $script:Mutex = New-Object Threading.Mutex($false, 'Global\ServidorPXE-Server')
     if (-not $script:Mutex.WaitOne(0)) { throw 'Ja existe uma instancia do ServidorPXE em execucao (use -Verb Status ou Restart).' }
 
-    # preflight HTTP (depois do mutex: o proprio DorPXE usa http.sys, dont PID 4)
+    # preflight HTTP (depois do mutex: o proprio ServidorPXE usa http.sys, dont PID 4)
     $httpPort = [int]$Cfg.Server.HttpPort
     if (-not (Test-DorPXEPortFree -Port $httpPort -Protocol 'TCP')) {
         $who = Get-DorPXEProcessOnPort -Port $httpPort -Protocol 'TCP'
@@ -189,7 +189,7 @@ function Start-DorPXEService {
     Write-DorPXEAutoExec -Config $Cfg | Out-Null
     $statusFile = Join-Path $p.State 'status.json'
     Start-Sleep -Milliseconds 800
-    Write-DorPXELog "=== DorPXE $(Get-DorPXEVersion) iniciado em $address (PID $PID) ===" -Level Info -Component core
+    Write-DorPXELog "=== ServidorPXE $(Get-DorPXEVersion) iniciado em $address (PID $PID) ===" -Level Info -Component core
     Write-DorPXELog "DHCP=$(($blocking | Where-Object { $_.Code -match 'Dhcp' }).Count) HTTP=1 URL=$(Get-DorPXEBaseUrl -Config $Cfg)/pxe/health.txt" -Level Info -Component core
     Write-Output ''
     Write-Output "PXE    : $(Get-DorPXEBaseUrl -Config $Cfg)/pxe/boot.ipxe?mac=00:00:00:00:00:01"
@@ -212,7 +212,7 @@ function Start-DorPXEService {
         # faz a limpeza na mão
         if (Get-Command Stop-DorPXEService -ErrorAction SilentlyContinue) { Stop-DorPXEService -Job $job }
         else {
-            Write-DorPXELog 'DorPXE: Stop-DorPXEService indisponivel; limpeza direta.' -Level Warn -Component core
+            Write-DorPXELog 'ServidorPXE: Stop-DorPXEService indisponivel; limpeza direta.' -Level Warn -Component core
             try { $job.Stop.Cancel() } catch { }
             if ($job.State -and $job.State.Pool) { try { $job.State.Pool.Stop() } catch { } }
             if ($script:Mutex) { try { $script:Mutex.ReleaseMutex() } catch { } }
@@ -229,12 +229,12 @@ function Show-DorPXEStatus {
         try { $st = [IO.File]::ReadAllText($f) | ConvertFrom-Json } catch { }
     }
     if (-not $st) {
-        Write-Output 'DorPXE: nenhum servico em execucao (sem state\status.json).'
+        Write-Output 'ServidorPXE: nenhum servico em execucao (sem state\status.json).'
         return
     }
     if ($AsJson) { $st | ConvertTo-Json -Depth 5; return }
     $up = (Get-Date) - [datetime]$st.started
-    Write-Output ("DorPXE {0}  PID {1}  {2} ({3})" -f $st.version, $st.pid, $st.server, $st.address)
+    Write-Output ("ServidorPXE {0}  PID {1}  {2} ({3})" -f $st.version, $st.pid, $st.server, $st.address)
     Write-Output ("em execucao : {0:hh\:mm\:ss}  (atualizado {1})" -f $up, $st.updated)
     Write-Output ("servicos    : DHCP={0} TFTP={1} HTTP={2} (porta {3})" -f $st.dhcp, $st.tftp, $st.http, $st.httpPort)
     Write-Output ("politica    : {0} (padrao {1})  perfis: {2}" -f $st.policy, $st.default, ($st.profiles -join ', '))
@@ -437,6 +437,19 @@ function Invoke-DorPXETest {
     Check 'boot tem ${mode}' ($bs2 -match '\$\{mode\}') ''
     Check 'boot tem BCD/boot.wim' (($bs2 -match 'initrd --name BCD') -and ($bs2 -match 'initrd --name boot.wim')) ''
     Check 'boot.wim canonico como padrao' ($bs2 -match 'set wim \S*\$\{mode\}/boot\.wim') 'sem set wim padrao'
+    # cada arquitetura extra gera UMA linha, mesmo com uefi e bios prontos:
+    # o ${mode} e do iPXE, nao do servidor, entao iterar por modo duplicava.
+    $linhasI386 = @([regex]::Matches($bs2, '(?m)^isset \$\{arch\} && match \$\{arch\} i386\* && set wim .*$'))
+    Check 'extras sem duplicar (i386)' ($linhasI386.Count -eq 1) "linhas i386=$($linhasI386.Count) (esperado 1)"
+    $qualquerExtra = @([regex]::Matches($bs2, '(?m)^isset \$\{arch\} && match \$\{arch\} .*&& set wim .*$'))
+    Check 'nenhuma linha de boot repetida' ((@($bs2 -split "`n" | Where-Object { $_ -match '\S' } | Group-Object | Where-Object { $_.Count -gt 1 })).Count -eq 0) 'ha linhas duplicadas no boot.ipxe'
+    # PXE_DUMP_BOOT=1 imprime o boot.ipxe gerado: e o arquivo exato que o cliente
+    # recebe, util para conferir o que a maquina vai ver no boot.
+    if ($env:PXE_DUMP_BOOT -eq '1') {
+        Write-Output '--- boot.ipxe gerado (PXE_DUMP_BOOT=1) ---'
+        Write-Output $bs2
+        Write-Output '--- fim ---'
+    }
     Check 'initrd usa o boot.wim escolhido' ($bs2 -match 'initrd --name boot\.wim \$\{wim\} boot\.wim') 'initrd sem \${wim}'
     Check 'boot escolhe por arquitetura' ($bs2 -match 'match \$\{arch\} i386') 'sem selecao de arquitetura'
     Check 'boot sem acento' (-not ($bs2 -match '[\u00C0-\u00FF]')) ''
@@ -606,6 +619,55 @@ function Invoke-DorPXETest {
     Check 'gitignore bloqueia estado e midia' ($gi.Contains('state/') -and $gi.Contains('*.log') -and $gi.Contains('www/_dorpxe/')) 'gitignore permissivo demais'
     Check 'gitignore nao versiona midia gerada' ($gi.Contains('*.iso') -and $gi.Contains('*.wim')) 'gitignore nao bloqueia .iso/.wim'
 
+    # O renome "so no nome visivel" ja deixou 3 nomes de runtime divergentes:
+    # share padrao, regra de firewall e nome de servico no sc.exe. Cada par
+    # writer/reader tem que concordar, senao o efeito e silencioso (config
+    # reescrito, diagnostico cego, sc.exe em servico inexistente).
+    $inst = [IO.File]::ReadAllText((Join-Path $script:Root 'Install-ServidorPXE.ps1'))
+    $adm = [IO.File]::ReadAllText((Join-Path $script:Root 'lib\Admin.ps1'))
+    $cmn = [IO.File]::ReadAllText((Join-Path $script:Root 'lib\Common.ps1'))
+    $fwInst = @([regex]::Matches($inst, "Add-DorPXEFirewallRule -Name '(ServidorPXE-\w+)'") | ForEach-Object { $_.Groups[1].Value } | Sort-Object -Unique)
+    $fwDiag = @([regex]::Matches(($inst + "`n" + $adm + "`n" + $cmn), 'DisplayName ["''](ServidorPXE\*|ServidorPXE-\w+)["'']') | ForEach-Object { $_.Groups[1].Value } | Sort-Object -Unique)
+    Check 'firewall: 3 regras criadas' ($fwInst.Count -eq 3) "criadas=$($fwInst.Count) (esperado 3)"
+    Check 'firewall: diagnostico casa com o instalador' (($fwDiag.Count -gt 0) -and (@($fwDiag | Where-Object { $_ -ne 'ServidorPXE*' }).Count -eq 0)) "diagnostico=$($fwDiag -join ',')"
+    $scAlvo = @([regex]::Matches($inst, 'sc\.exe (?:description|failure) (\S+)') | ForEach-Object { $_.Groups[1].Value } | Sort-Object -Unique)
+    Check 'sc.exe aponta para o servico ServidorPXE' (($scAlvo.Count -gt 0) -and (@($scAlvo | Where-Object { $_ -ne 'ServidorPXE' }).Count -eq 0)) "alvo=$($scAlvo -join ',')"
+    $shareDefault = [regex]::Match($cmn, "Share\s*=\s*'(\w+)'").Groups[1].Value
+    Check 'share padrao do config = ServidorPXE' ($shareDefault -eq 'ServidorPXE') "padrao='$shareDefault'"
+    $logArq = [regex]::Match($cmn, "'(servidorpxe-\{0\}\.log)'").Groups[1].Value
+    $logLeitura = @([regex]::Matches($cmn + "`n" + $adm, "Filter '(servidorpxe-\*\.log)'|'servidorpxe-\*\.log'\)") | ForEach-Object { $_.Groups[1].Value } | Sort-Object -Unique)
+    Check 'log arquivado: escrita e leitura com o mesmo prefixo' (($logArq -eq 'servidorpxe-{0}.log') -and ($logLeitura.Count -gt 0)) "escrita='$logArq' leitura='$($logLeitura -join ',')"
+
+    # Nenhum texto de runtime pode dizer o nome antigo com D maiusculo. Case
+    # SENSITVEL de proposito: "ServidorPXE" contem "dorPXE" e nao pode casar.
+    # O marcador e montado em runtime para este proprio bloco nao se detectar.
+    $marca = 'Dor' + 'PXE'
+    $internos = 'Get-DorPXE|New-DorPXE|Set-DorPXE|Add-DorPXE|Test-DorPXE|Write-DorPXE|Invoke-DorPXE|Resolve-DorPXE|Save-DorPXE|Import-DorPXE|Stop-DorPXE|Start-DorPXE|Move-DorPXE|Update-DorPXE|Initialize-DorPXE|ConvertFrom-DorPXE|ConvertTo-DorPXE|Expand-DorPXE|Build-DorPXE|Copy-DorPXE|Remove-DorPXE|Show-DorPXE|X-DorPXE|DorPXE[A-Z]|DorPXE\.ps1|Install-DorPXE\.ps1|DorPXE\.config|dorpxe_session|dorpxe_t|dorpxe_step|_dorpxe|DORPXE_SKIP'
+    $visiveis = @()
+    # -Path com wildcard (e nao -LiteralPath) para o -Include valer de fato.
+    foreach ($f in (Get-ChildItem -Path (Join-Path $script:Root '*') -Recurse -Include *.ps1, *.bat, *.psd1, .editorconfig, .gitattributes, .gitignore -File -Force | Where-Object { $_.FullName -notmatch '\\(state|logs|www)\\' })) {
+        $ln = 0
+        foreach ($line in [IO.File]::ReadAllLines($f.FullName)) {
+            $ln++
+            if ($line -cmatch $marca -and $line -cnotmatch $internos) {
+                $visiveis += ("{0}:{1}: {2}" -f $f.Name, $ln, $line.Trim())
+            }
+        }
+    }
+    Check 'nenhum nome antigo visivel no codigo' ($visiveis.Count -eq 0) ($visiveis -join ' /// ')
+    # O config carregado em runtime precisa concordar com o default do
+    # New-DorPXEConfig: divergencia aqui sobrescreve o usuario em silencio.
+    $cfgFile = Join-Path $script:Root 'config\ServidorPXE.config.psd1'
+    if (Test-Path -LiteralPath $cfgFile) {
+        $cfgTxt = [IO.File]::ReadAllText($cfgFile)
+        $cfgShare = [regex]::Match($cfgTxt, "(?m)^\s*Share\s*=\s*'(\w+)'").Groups[1].Value
+        $cfgMsg = [regex]::Match($cfgTxt, "MessageDenied\s*=\s*'(\w+)").Groups[1].Value
+        Check 'config: Share = ServidorPXE' ($cfgShare -eq 'ServidorPXE') "config tem '$cfgShare'"
+        Check 'config: MessageDenied = ServidorPXE' ($cfgMsg -eq 'ServidorPXE') "config tem '$cfgMsg'"
+    }
+    # README nao pode documentar um caminho de log que nao existe mais.
+    Check 'README documenta o log arquivado atual' ($rd.Contains('logs\servidorpxe-AAAAMMDD.log')) 'README ainda cita logs\dorpxe-AAAAMMDD.log'
+
     Write-Output ''
     if ($script:TestFail -eq 0) { Write-Output 'RESULTADO: todos os testes passaram.' }
     else { Write-Output ("RESULTADO: {0} falha(s)." -f $script:TestFail) }
@@ -673,7 +735,7 @@ function Show-DorPXEHealth {
 
 function Show-DorPXEHelp {
     Write-Output @"
-DorPXE $(Get-DorPXEVersion) - servidor PXE nativo (PowerShell 5.1) para Windows 11
+ServidorPXE $(Get-DorPXEVersion) - servidor PXE nativo (PowerShell 5.1) para Windows 11
 
 USO
   .\ServidorPXE.ps1 <Verbo> [opcoes]
@@ -759,7 +821,7 @@ try {
                 }
                 $out = Join-Path $paths.Logs 'service.out.log'
                 Start-Process powershell -WindowStyle Hidden -ArgumentList $argl -RedirectStandardOutput $out -RedirectStandardError (Join-Path $paths.Logs 'service.err.log')
-                Write-Output "DorPXE iniciado em segundo plano (saida: $out)"
+                Write-Output "ServidorPXE iniciado em segundo plano (saida: $out)"
                 $sf2 = Join-Path $paths.State 'status.json'
                 for ($i = 0; $i -lt 40; $i++) {
                     Start-Sleep -Milliseconds 500

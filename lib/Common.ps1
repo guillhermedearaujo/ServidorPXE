@@ -57,7 +57,7 @@ function New-DorPXEConfig {
             Prefixes        = @()
             MenuProfiles    = @()
             MenuSeconds     = 30
-            MessageDenied   = 'DorPXE: este equipamento nao esta autorizado para boot via rede.'
+            MessageDenied   = 'ServidorPXE: este equipamento nao esta autorizado para boot via rede.'
         }
         Profiles = @(
             @{
@@ -83,7 +83,7 @@ function New-DorPXEConfig {
               Iso                 = @()
               IsoDir              = ''
               Slug                = 'win11'
-            Share               = 'DorPXE'
+            Share               = 'ServidorPXE'
             ShareAuth           = 'Everyone'
             SetupUser           = ''
             SetupPassword       = ''
@@ -212,7 +212,7 @@ function ConvertTo-DorPXELiteral {
       New-Item -ItemType Directory -Path $Directory -Force | Out-Null
       $script:DorPXELevel = switch ($Level) { 'Error' { 0 } 'Warn' { 1 } 'Info' { 2 } 'Debug' { 3 } default { 2 } }
       # log ativo: UM arquivo de texto na raiz do projeto (servidorpxe.log).
-      # O arquivo do dia anterior vai para logs\dorpxe-AAAAMMDD.log.
+      # O arquivo do dia anterior vai para logs\servidorpxe-AAAAMMDD.log.
       Move-DorPXEStaleLog -File $p.LogFile -Archive $Directory
       $script:DorPXELogFile = $p.LogFile
       Remove-DorPXEOldLog -Directory $Directory
@@ -227,7 +227,7 @@ function ConvertTo-DorPXELiteral {
       try {
           $fi = Get-Item -LiteralPath $File
           if ($fi.LastWriteTime.Date -eq (Get-Date).Date) { return }
-          $dest = Join-Path $Archive ('dorpxe-{0}.log' -f $fi.LastWriteTime.ToString('yyyyMMdd'))
+          $dest = Join-Path $Archive ('servidorpxe-{0}.log' -f $fi.LastWriteTime.ToString('yyyyMMdd'))
           Move-Item -LiteralPath $File -Destination $dest -Force -ErrorAction Stop
       }
       catch { }
@@ -242,7 +242,7 @@ function Set-DorPXELogTarget {
 function Remove-DorPXEOldLog {
     param([string]$Directory, [int]$KeepDays = 30)
     try {
-        Get-ChildItem -LiteralPath $Directory -Filter 'dorpxe-*.log' -ErrorAction SilentlyContinue |
+        Get-ChildItem -LiteralPath $Directory -Filter 'servidorpxe-*.log' -ErrorAction SilentlyContinue |
             Where-Object { $_.LastWriteTime -lt (Get-Date).AddDays(-$KeepDays) } |
             Remove-Item -Force -ErrorAction SilentlyContinue
     }
@@ -655,7 +655,7 @@ function Add-DorPXEFirewallRule {
         [string]$Profile = 'Any',
         [switch]$Remove
     )
-    Get-NetFirewallRule -DisplayName "DorPXE*" -ErrorAction SilentlyContinue |
+    Get-NetFirewallRule -DisplayName "ServidorPXE*" -ErrorAction SilentlyContinue |
         Where-Object { $_.DisplayName -eq $Name } | Remove-NetFirewallRule -ErrorAction SilentlyContinue
     if ($Remove) { return }
     $params = @{
