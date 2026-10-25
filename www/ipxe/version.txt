@@ -1,0 +1,2 @@
+iPXE: 2.0.0+ (g744cd)
+wimboot: v2.9.0 (https://github.com/ipxe/wimboot)
