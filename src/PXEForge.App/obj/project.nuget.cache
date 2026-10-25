@@ -1,0 +1,13 @@
+{
+  "version": 2,
+  "dgSpecHash": "rmVaKsymOmU=",
+  "success": true,
+  "projectFilePath": "E:\\Documentos\\PXE\\pxeforge\\src\\PXEForge.App\\PXEForge.App.csproj",
+  "expectedPackageFiles": [
+    "C:\\Users\\escanor\\.nuget\\packages\\microsoft.net.illink.tasks\\8.0.32\\microsoft.net.illink.tasks.8.0.32.nupkg.sha512",
+    "C:\\Users\\escanor\\.nuget\\packages\\microsoft.netcore.app.runtime.win-x64\\8.0.32\\microsoft.netcore.app.runtime.win-x64.8.0.32.nupkg.sha512",
+    "C:\\Users\\escanor\\.nuget\\packages\\microsoft.windowsdesktop.app.runtime.win-x64\\8.0.32\\microsoft.windowsdesktop.app.runtime.win-x64.8.0.32.nupkg.sha512",
+    "C:\\Users\\escanor\\.nuget\\packages\\microsoft.aspnetcore.app.runtime.win-x64\\8.0.32\\microsoft.aspnetcore.app.runtime.win-x64.8.0.32.nupkg.sha512"
+  ],
+  "logs": []
+}

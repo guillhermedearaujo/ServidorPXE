@@ -1,0 +1,9 @@
+E:\Documentos\PXE\pxeforge\src\PXEForge.Core\obj\Release\net8.0\PXEForge.Core.GeneratedMSBuildEditorConfig.editorconfig
+E:\Documentos\PXE\pxeforge\src\PXEForge.Core\obj\Release\net8.0\PXEForge.Core.AssemblyInfoInputs.cache
+E:\Documentos\PXE\pxeforge\src\PXEForge.Core\obj\Release\net8.0\PXEForge.Core.AssemblyInfo.cs
+E:\Documentos\PXE\pxeforge\src\PXEForge.Core\obj\Release\net8.0\PXEForge.Core.csproj.CoreCompileInputs.cache
+E:\Documentos\PXE\pxeforge\src\PXEForge.Core\bin\Release\net8.0\PXEForge.Core.deps.json
+E:\Documentos\PXE\pxeforge\src\PXEForge.Core\bin\Release\net8.0\PXEForge.Core.dll
+E:\Documentos\PXE\pxeforge\src\PXEForge.Core\obj\Release\net8.0\PXEForge.Core.dll
+E:\Documentos\PXE\pxeforge\src\PXEForge.Core\obj\Release\net8.0\refint\PXEForge.Core.dll
+E:\Documentos\PXE\pxeforge\src\PXEForge.Core\obj\Release\net8.0\ref\PXEForge.Core.dll

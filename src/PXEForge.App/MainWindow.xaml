@@ -1,0 +1,190 @@
+﻿<Window x:Class="PXEForge.App.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="PXEForge - Test Build" Height="720" Width="1100"
+        MinHeight="640" MinWidth="980"
+        WindowStartupLocation="CenterScreen"
+        Background="#0d1117">
+    <Window.Resources>
+        <Style TargetType="TextBlock">
+            <Setter Property="Foreground" Value="#c9d1d9"/>
+            <Setter Property="FontFamily" Value="Segoe UI"/>
+        </Style>
+        <Style TargetType="Button">
+            <Setter Property="Background" Value="#21262d"/>
+            <Setter Property="Foreground" Value="#c9d1d9"/>
+            <Setter Property="BorderBrush" Value="#30363d"/>
+            <Setter Property="Padding" Value="14,8"/>
+            <Setter Property="Margin" Value="4"/>
+            <Setter Property="Cursor" Value="Hand"/>
+        </Style>
+        <Style TargetType="TextBox">
+            <Setter Property="Background" Value="#161b22"/>
+            <Setter Property="Foreground" Value="#c9d1d9"/>
+            <Setter Property="BorderBrush" Value="#30363d"/>
+            <Setter Property="Padding" Value="6,4"/>
+        </Style>
+        <Style TargetType="GroupBox">
+            <Setter Property="Foreground" Value="#c9d1d9"/>
+            <Setter Property="BorderBrush" Value="#30363d"/>
+            <Setter Property="Margin" Value="6"/>
+            <Setter Property="Padding" Value="10"/>
+        </Style>
+        <Style TargetType="ListBox">
+            <Setter Property="Background" Value="#0d1117"/>
+            <Setter Property="Foreground" Value="#c9d1d9"/>
+            <Setter Property="BorderBrush" Value="#30363d"/>
+        </Style>
+    </Window.Resources>
+
+    <Grid Margin="10">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <Border Grid.Row="0" Background="#161b22" BorderBrush="#30363d" BorderThickness="1" CornerRadius="6" Padding="14,10" Margin="6">
+            <DockPanel>
+                <StackPanel Orientation="Horizontal" DockPanel.Dock="Left">
+                    <Ellipse Width="10" Height="10" Fill="{Binding StateColor}" Margin="0,0,10,0"/>
+                    <TextBlock Text="Status:" FontWeight="SemiBold"/>
+                    <TextBlock Text="{Binding StatusText}" Margin="6,0,18,0"/>
+                    <TextBlock Text="DHCP:"/>
+                    <TextBlock Text="{Binding DhcpRequests}" Margin="4,0,12,0"/>
+                    <TextBlock Text="TFTP transfers:"/>
+                    <TextBlock Text="{Binding TftpTransfers}" Margin="4,0,12,0"/>
+                    <TextBlock Text="Admin:"/>
+                    <TextBlock Text="{Binding Admin}" Margin="4,0,0,0"/>
+                </StackPanel>
+                <TextBlock DockPanel.Dock="Right" HorizontalAlignment="Right" Text="{Binding BuildStamp}"/>
+            </DockPanel>
+        </Border>
+
+        <GroupBox Grid.Row="1" Header="1) Origem da mídia (Windows 10/11)">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <Button Grid.Column="0" Content="CARREGAR .ISO" Click="LoadIso_Click" Padding="16,8"
+                        IsEnabled="{Binding IsBusy, Converter={StaticResource BoolInverse}}"
+                        ToolTip="Seleciona o arquivo .ISO do Windows 10/11"/>
+                <Button Grid.Column="1" Content="SELECIONAR DIRETÓRIO" Click="SelectDir_Click" Padding="16,8"
+                        IsEnabled="{Binding IsBusy, Converter={StaticResource BoolInverse}}"
+                        ToolTip="Seleciona a pasta com a mídia já extraída (raiz do pendrive/DVD)"/>
+                <TextBlock Grid.Column="2" Text="{Binding SelectedSourceDisplay}" VerticalAlignment="Center"
+                           Margin="12,0,12,0" TextTrimming="CharacterEllipsis" Foreground="#8b949e"
+                           ToolTip="{Binding SelectedSource}"/>
+                <Button Grid.Column="3" Content="Preparar mídia" Click="Prepare_Click" Padding="16,8"
+                        IsEnabled="{Binding IsBusy, Converter={StaticResource BoolInverse}}"/>
+            </Grid>
+        </GroupBox>
+
+        <Grid Grid.Row="2" Margin="6">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="360"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+
+            <GroupBox Header="2) Servidor, Monitor Unificado &amp; Testes">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <StackPanel>
+                        <Grid Margin="0,0,0,10">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+                            <TextBlock Text="Nome:" VerticalAlignment="Center" Margin="0,4"/>
+                            <TextBox Grid.Column="1" Text="{Binding ServerName, Mode=TwoWay}" Margin="6,4"/>
+                            <TextBlock Grid.Row="1" Text="Bind:" VerticalAlignment="Center" Margin="0,4"/>
+                            <TextBox Grid.Row="1" Grid.Column="1" Text="{Binding BindAddress, Mode=TwoWay}" Margin="6,4"/>
+                            <TextBlock Grid.Row="2" Text="HTTP port:" VerticalAlignment="Center" Margin="0,4"/>
+                            <TextBox Grid.Row="2" Grid.Column="1" Text="{Binding HttpPort, Mode=TwoWay}" Margin="6,4"/>
+                        </Grid>
+                        <Button Content="Iniciar servidor" Click="Start_Click" IsEnabled="{Binding IsBusy, Converter={StaticResource BoolInverse}}"/>
+                        <Button Content="Parar servidor" Click="Stop_Click" IsEnabled="{Binding IsBusy, Converter={StaticResource BoolInverse}}"/>
+                        <Button Content="Executar testes automatizados" Click="Test_Click" IsEnabled="{Binding IsBusy, Converter={StaticResource BoolInverse}}"/>
+                        <TextBlock Text="{Binding TestSummary}" TextWrapping="Wrap" Margin="4,8,4,4"/>
+                        <Border Margin="4,10,4,4" Padding="8" Background="#161b22" BorderBrush="#30363d" BorderThickness="1" CornerRadius="6">
+                            <StackPanel>
+                                <TextBlock Text="MONITOR UNIFICADO" FontWeight="SemiBold"/>
+                                <TextBlock Text="{Binding MonitorSummary}" TextWrapping="Wrap" Foreground="#8b949e" Margin="0,2,0,6"/>
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Text="CPU" VerticalAlignment="Center"/>
+                                    <ProgressBar Grid.Column="1" Value="{Binding CpuPercent}" Maximum="100" Height="8" Margin="8,0,0,0"/>
+                                </Grid>
+                                <Grid Margin="0,4,0,0">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Text="RAM" VerticalAlignment="Center"/>
+                                    <ProgressBar Grid.Column="1" Value="{Binding RamPercent}" Maximum="100" Height="8" Margin="8,0,0,0"/>
+                                </Grid>
+                                <TextBlock Text="{Binding RamUsageText}" Margin="0,6,0,0" Foreground="#8b949e"/>
+                                <TextBlock Text="{Binding ProcessMemText}" TextWrapping="Wrap" Foreground="#8b949e"/>
+                                <TextBlock Text="{Binding ActiveSessionsText}" Margin="0,6,0,0"/>
+                                <TextBlock Text="{Binding TrafficText}" Foreground="#8b949e"/>
+                                <TextBlock Text="{Binding Handles, StringFormat=Handles: {0} | Threads: {1}}" Foreground="#8b949e"/>
+                                <TextBlock Text="{Binding CapacityText}" Margin="0,6,0,0" Foreground="#58a6ff" FontWeight="SemiBold"/>
+                                <TextBlock Text="{Binding ThrottleReason}" Margin="0,4,0,0">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="Foreground" Value="#3fb950"/>
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding IsThrottled}" Value="True">
+                                                    <Setter Property="Foreground" Value="#f85149"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
+                                <TextBlock Text="Limite ativo: bloqueia novos TFTP/HTTP se CPU ou RAM >= 85%" Foreground="#8b949e" FontSize="11" TextWrapping="Wrap" Margin="0,2,0,0"/>
+                            </StackPanel>
+                        </Border>
+                        <Border Margin="4,10,4,4" Padding="8" Background="#161b22" BorderBrush="#30363d" BorderThickness="1" CornerRadius="6" Visibility="{Binding IsPreparing, Converter={StaticResource BoolToVis}}">
+                            <StackPanel>
+                                <TextBlock Text="Preparação da mídia em andamento" FontWeight="SemiBold"/>
+                                <TextBlock Text="{Binding PrepareStage}" TextWrapping="Wrap" Foreground="#8b949e" Margin="0,2,0,6"/>
+                                <ProgressBar IsIndeterminate="{Binding PrepareIndeterminate}" Value="{Binding PrepareProgress}" Height="10"/>
+                            </StackPanel>
+                        </Border>
+                        <TextBlock Text="{Binding ProgressText}" TextWrapping="Wrap" Margin="4,8,4,4" Foreground="#8b949e"/>
+                        <TextBlock Text="Requer execução como administrador para UDP/67, UDP/69 e patch do boot.wim." TextWrapping="Wrap" Margin="4,14,4,4" Foreground="#f0ad4e" FontSize="11"/>
+                    </StackPanel>
+                </ScrollViewer>
+            </GroupBox>
+
+            <GroupBox Grid.Column="1" Header="Logs em tempo real (selecione e copie)">
+                <DockPanel>
+                    <TextBlock DockPanel.Dock="Top" Text="Dica: selecione as linhas abaixo com o mouse para copiar (Ctrl+C)." Foreground="#8b949e" FontSize="11" Margin="4,0,4,6"/>
+                    <ListBox ItemsSource="{Binding Logs}" ScrollViewer.HorizontalScrollBarVisibility="Auto" ScrollViewer.VerticalScrollBarVisibility="Auto"
+                             SelectionMode="Extended">
+                        <ListBox.ItemTemplate>
+                            <DataTemplate>
+                                <TextBlock Text="{Binding Line}" FontFamily="Consolas" FontSize="11" TextWrapping="NoWrap"/>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+                </DockPanel>
+            </GroupBox>
+        </Grid>
+
+        <Border Grid.Row="3" Background="#161b22" BorderBrush="#30363d" BorderThickness="1" CornerRadius="6" Padding="10,6" Margin="6">
+            <TextBlock Text="Fluxo: Provedor DHCP real continua ativo · proxyDHCP responde só a clientes PXE · iPXE carrega via TFTP/HTTP · WinPE baixa install.wim pelo share SMB." Foreground="#8b949e"/>
+        </Border>
+    </Grid>
+</Window>
